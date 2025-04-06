@@ -8,8 +8,14 @@ export function inferFunctionType(
 ) {
     const project = new Project();
     const sourceFile = project.createSourceFile("temp.ts", sourceStr);
-    const { params, body } = getFunction();
+    const { params, body, propertyAccesses } = getFunction();
     const funCache = Cache().initializerCache(params.params);
+    propertyAccesses?.forEach(expr => {
+        const paramsKey = expr.getExpression().getText();
+        if (funCache.has(paramsKey)) {
+            funCache.get(paramsKey).add(expr.getName());
+        }
+    });
 
     body.forEachDescendant((node) => {
         const lineKind = node.getKind();
@@ -18,7 +24,10 @@ export function inferFunctionType(
             case SyntaxKind.VariableDeclaration:
                 toVariableDeclaration(node);
                 break;
-            default: {};
+            case SyntaxKind.BinaryExpression:
+                toBinaryExpression(node);
+                break;
+            default: { };
         }
     });
 
@@ -29,22 +38,25 @@ export function inferFunctionType(
 
     function getFunction() {
         let iFunction = sourceFile.getFunction(targetFuncName)!;
-        let iFunctionBody, iFunctionParams;
+        let iFunctionBody, iFunctionParams, iPropertyAccesses;
         if (iFunction) {
             iFunctionBody = iFunction.getBodyOrThrow();
             iFunctionParams = getAllParametersType(iFunction.getParameters());
+            iPropertyAccesses = iFunction?.getDescendantsOfKind(SyntaxKind.PropertyAccessExpression)
         } else {
             // 获取变量声明（即函数表达式所在的位置）
             const variableDeclaration = sourceFile.getVariableDeclaration(targetFuncName);
             const initializer = variableDeclaration?.getInitializer();
             const funParams = variableDeclaration?.getInitializerIfKind(initializer?.getKind()! as SyntaxKind.FunctionExpression);
             iFunctionBody = funParams!.getBody();
+            iPropertyAccesses = funParams?.getDescendantsOfKind(SyntaxKind.PropertyAccessExpression)
             iFunctionParams = getAllParametersType(funParams?.getParameters()!);
         }
 
         return {
             body: iFunctionBody,
-            params: iFunctionParams
+            params: iFunctionParams,
+            propertyAccesses: iPropertyAccesses
         };
     }
 
@@ -69,4 +81,37 @@ export function inferFunctionType(
             iParamSet.add(nameNode.getText());
         }
     }
+
+
+    function toBinaryExpression(node: Node<ts.Node>) {
+        const binExp = node.asKindOrThrow(SyntaxKind.BinaryExpression);
+        if (binExp.getOperatorToken().getText() === "=") {
+            const left = binExp.getLeft();
+            if (left.getKind() === SyntaxKind.PropertyAccessExpression) {
+                const propAccess = left.asKindOrThrow(SyntaxKind.PropertyAccessExpression);
+                const paramKey = propAccess.getExpression().getText();
+
+                if (!funCache.has(paramKey)) return;
+                const iParamSet = funCache.get(paramKey)!;
+                const propName = propAccess.getName();
+                // 利用右侧表达式获取类型信息
+                // const right = binExp.getRight();
+                // const type = right.getType().getBaseTypeOfLiteralType().getText()
+                // console.log(type,propName, 'type');
+                iParamSet.add(propName);
+            }
+        }
+    }
 }
+
+
+inferFunctionType(`function dd(d) {
+        d.data = 123;
+        d.list = [];
+        d.aa.forEach(el => {});
+        let e2e = d.ee[0];
+        d.l += 1;
+        const {a1,a2,a3} = d;
+    {...d.cmrmmmmmm}
+    Object.assign({}, d.allListadasdasd)
+    }`, 'dd')
