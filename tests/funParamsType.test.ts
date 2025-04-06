@@ -13,7 +13,7 @@ describe("检查函数参数类型是否正常", () => {
 
         for (const param in paramsMap.entries()) {
             const [key, type] = param;
-            expect(resultParams[key!]).toBe(type!);
+            expect(resultParams[key!]?.type).toBe(type!);
         }
     })
 
@@ -22,7 +22,7 @@ describe("检查函数参数类型是否正常", () => {
         const resultParams = inferFunctionType(origin, funName).params;
         for (const param in paramsMap.entries()) {
             const [key, type] = param;
-            expect(resultParams[key!]).toBe(type!);
+            expect(resultParams[key!]?.type).toBe(type!);
         }
     })
 
@@ -31,7 +31,7 @@ describe("检查函数参数类型是否正常", () => {
         const resultParams = inferFunctionType(origin, funName).params;
         for (const param in paramsMap.entries()) {
             const [key, type] = param;
-            expect(resultParams[key!]).toBe(type!);
+            expect(resultParams[key!]?.type).toBe(type!);
         }
     })
 });

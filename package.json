@@ -6,7 +6,7 @@
     "typescript": "^5"
   },
   "scripts": {
-    "dev": "bun run index.ts",
+    "dev": "bun run main.ts",
     "test": "bun test"
   },
   "devDependencies": {
