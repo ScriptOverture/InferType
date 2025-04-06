@@ -1,0 +1,16 @@
+{
+  "name": "inferfunctype",
+  "module": "main.ts",
+  "type": "module",
+  "peerDependencies": {
+    "typescript": "^5"
+  },
+  "scripts": {
+    "dev": "bun run index.ts",
+    "test": "bun test"
+  },
+  "devDependencies": {
+    "@types/bun": "latest",
+    "ts-morph": "^25.0.1"
+  }
+}
