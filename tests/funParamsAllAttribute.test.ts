@@ -19,7 +19,7 @@ describe("检查函数参数所有属性是否匹配", () => {
         const attributeData = inferFunctionType(origin, funName).attributeData;
         for (let param in paramsMap.entries()) {
             const [key, attrs] = param;
-            expect(attributeData.get(key!)).toBe(attrs!.length);
+            expect(attributeData.get(key!)?.size).toBe(attrs!.length);
         }
     })
 
@@ -34,7 +34,7 @@ describe("检查函数参数所有属性是否匹配", () => {
         const attributeData = inferFunctionType(origin, funName).attributeData;
         for (let param in paramsMap.entries()) {
             const [key, attrs] = param;
-            expect(attributeData.get(key!)).toBe(attrs!.length);
+            expect(attributeData.get(key!)?.size).toBe(attrs!.length);
         }
     })
 
@@ -45,7 +45,7 @@ describe("检查函数参数所有属性是否匹配", () => {
         const attributeData = inferFunctionType(origin, funName).attributeData;
         for (let param in paramsMap.entries()) {
             const [key, attrs] = param;
-            expect(attributeData.get(key!)).toBe(attrs!.length);
+            expect(attributeData.get(key!)?.size).toBe(attrs!.length);
         }
     })
 
@@ -119,11 +119,11 @@ describe("检查函数内部参数隐式所有属性是否匹配", () => {
             ${params[1]}.list = [];
         }`;
         const resultAttributeData = inferFunctionType(origin, funName).attributeData;
-        expect(resultAttributeData.get(params[0]!).size).toBe(2);
-        expect(resultAttributeData.get(params[0]!).has('data')).toBe(true);
-        expect(resultAttributeData.get(params[0]!).has('list')).toBe(true);
-        expect(resultAttributeData.get(params[1]!).size).toBe(1);
-        expect(resultAttributeData.get(params[1]!).has('list')).toBe(true);
+        expect(resultAttributeData.get(params[0]!)?.size).toBe(2);
+        expect(resultAttributeData.get(params[0]!)?.has('data')).toBe(true);
+        expect(resultAttributeData.get(params[0]!)?.has('list')).toBe(true);
+        expect(resultAttributeData.get(params[1]!)?.size).toBe(1);
+        expect(resultAttributeData.get(params[1]!)?.has('list')).toBe(true);
     })
 
     test('检查表达式引用属性访问修改匹配', () => {
@@ -132,9 +132,9 @@ describe("检查函数内部参数隐式所有属性是否匹配", () => {
             let e2e = ${params[0]}.list[0];
         }`;
         const resultAttributeData = inferFunctionType(origin, funName).attributeData;
-        expect(resultAttributeData.get(params[0]!).size).toBe(2);
-        expect(resultAttributeData.get(params[0]!).has('data')).toBe(true);
-        expect(resultAttributeData.get(params[0]!).has('list')).toBe(true);
+        expect(resultAttributeData.get(params[0]!)?.size).toBe(2);
+        expect(resultAttributeData.get(params[0]!)?.has('data')).toBe(true);
+        expect(resultAttributeData.get(params[0]!)?.has('list')).toBe(true);
     })
 
     test('检查表达式引用属性解构，属性是否匹配', () => {
@@ -142,8 +142,8 @@ describe("检查函数内部参数隐式所有属性是否匹配", () => {
             {...${params[0]}.allList};
         }`;
         const resultAttributeData = inferFunctionType(origin, funName).attributeData;
-        expect(resultAttributeData.get(params[0]!).size).toBe(1);
-        expect(resultAttributeData.get(params[0]!).has('allList')).toBe(true);
+        expect(resultAttributeData.get(params[0]!)?.size).toBe(1);
+        expect(resultAttributeData.get(params[0]!)?.has('allList')).toBe(true);
     })
 
     test('检查表达式Object.assign，属性是否匹配', () => {
@@ -151,7 +151,7 @@ describe("检查函数内部参数隐式所有属性是否匹配", () => {
             Object.assign({}, ${params[0]}.allList);
         }`;
         const resultAttributeData = inferFunctionType(origin, funName).attributeData;
-        expect(resultAttributeData.get(params[0]!).size).toBe(1);
-        expect(resultAttributeData.get(params[0]!).has('allList')).toBe(true);
+        expect(resultAttributeData.get(params[0]!)?.size).toBe(1);
+        expect(resultAttributeData.get(params[0]!)?.has('allList')).toBe(true);
     })
 });

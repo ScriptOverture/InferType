@@ -9,11 +9,11 @@ export function inferFunctionType(
     const project = new Project();
     const sourceFile = project.createSourceFile("temp.ts", sourceStr);
     const { params, body, propertyAccesses } = getFunction();
-    const funCache = Cache().initializerCache(params.params);
+    const funCache = Cache<ReturnType<typeof Cache<string | null>>>().initializerCache(params.params);
     propertyAccesses?.forEach(expr => {
         const paramsKey = expr.getExpression().getText();
         if (funCache.has(paramsKey)) {
-            funCache.get(paramsKey).add(expr.getName());
+            funCache.get(paramsKey)?.add(expr.getName());
         }
     });
 
@@ -73,7 +73,9 @@ export function inferFunctionType(
             const bindingPattern = nameNode.asKindOrThrow(SyntaxKind.ObjectBindingPattern);
             bindingPattern.getElements().forEach(elem => {
                 const propName = elem.getPropertyNameNode()?.getText() || elem.getName();
-                iParamSet.add(propName);
+                const initializer = elem.getInitializer();
+                const defaultType = initializer?.getType()?.getBaseTypeOfLiteralType().getText()
+                iParamSet.add(propName, defaultType);
             });
         }
         // 简单别名赋值：例如 const copyProps = props;
@@ -85,8 +87,10 @@ export function inferFunctionType(
 
     function toBinaryExpression(node: Node<ts.Node>) {
         const binExp = node.asKindOrThrow(SyntaxKind.BinaryExpression);
-        if (binExp.getOperatorToken().getText() === "=") {
+        if (binExp.getOperatorToken().getKind() === SyntaxKind.EqualsToken) {
             const left = binExp.getLeft();
+            const right = binExp.getRight();
+
             if (left.getKind() === SyntaxKind.PropertyAccessExpression) {
                 const propAccess = left.asKindOrThrow(SyntaxKind.PropertyAccessExpression);
                 const paramKey = propAccess.getExpression().getText();
@@ -95,23 +99,16 @@ export function inferFunctionType(
                 const iParamSet = funCache.get(paramKey)!;
                 const propName = propAccess.getName();
                 // 利用右侧表达式获取类型信息
-                // const right = binExp.getRight();
-                // const type = right.getType().getBaseTypeOfLiteralType().getText()
-                // console.log(type,propName, 'type');
-                iParamSet.add(propName);
+                const rightType = right.getType().getBaseTypeOfLiteralType().getText();
+                iParamSet.add(propName, rightType);
             }
         }
     }
 }
 
 
-inferFunctionType(`function dd(d) {
-        d.data = 123;
-        d.list = [];
-        d.aa.forEach(el => {});
-        let e2e = d.ee[0];
-        d.l += 1;
-        const {a1,a2,a3} = d;
-    {...d.cmrmmmmmm}
-    Object.assign({}, d.allListadasdasd)
-    }`, 'dd')
+const s = inferFunctionType(`function dd(d) {
+        d.dd = 1;
+    }`, 'dd').attributeData;
+    console.log(s.get('d')?.get('a'), s.get('d')?.get('b'), s.get('d')?.get('c'));
+    
