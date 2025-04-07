@@ -14,9 +14,17 @@ export function Cache<T>() {
                 cache.set(key, val as T)
             }
         },
+        update: (key: string, val: AddParam<T>) => {
+            const prev = cache.get(key);
+            if (prev && Object.hasOwn(prev, 'update')) {
+                (prev as ReturnType<typeof Cache<T>>).update(key, val);
+            } else {
+                cache.set(key, val as T);
+            }
+        },
         get size() {
             return cache.size;
-        }
+        },
     };
 
     function initializerCache(data: object) {

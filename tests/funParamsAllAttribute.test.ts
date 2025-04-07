@@ -17,8 +17,7 @@ describe("检查函数参数所有属性是否匹配", () => {
             ${renderParamAttrs.join('')}
         }`;
         const attributeData = inferFunctionType(origin, funName).attributeData;
-        for (let param in paramsMap.entries()) {
-            const [key, attrs] = param;
+        for (let [key, attrs] of paramsMap.entries()) {
             expect(attributeData.get(key!)?.size).toBe(attrs!.length);
         }
     })
@@ -32,8 +31,7 @@ describe("检查函数参数所有属性是否匹配", () => {
             ${renderParamAttrs.join('')};
         }`;
         const attributeData = inferFunctionType(origin, funName).attributeData;
-        for (let param in paramsMap.entries()) {
-            const [key, attrs] = param;
+        for (let [key, attrs] of paramsMap.entries()) {
             expect(attributeData.get(key!)?.size).toBe(attrs!.length);
         }
     })
@@ -43,8 +41,7 @@ describe("检查函数参数所有属性是否匹配", () => {
             ${renderParamAttrs.join('')}
         }`;
         const attributeData = inferFunctionType(origin, funName).attributeData;
-        for (let param in paramsMap.entries()) {
-            const [key, attrs] = param;
+        for (let [key, attrs] of paramsMap.entries()) {
             expect(attributeData.get(key!)?.size).toBe(attrs!.length);
         }
     })
@@ -59,8 +56,7 @@ describe("检查函数参数所有属性是否匹配", () => {
         }));
         const origin = `function ${funName}(${params.join(',')}) {}`;
         const resultParams = inferFunctionType(origin, funName).params;
-        for (let param in paramsMap.entries()) {
-            const [key, attrs] = param;
+        for (let [key, attrs] of paramsMap.entries()) {
             // 参数结构
             if (attrs?.length) {
                 expect(resultParams[key!]?.origin?.length).toBe(attrs!.length);
@@ -85,8 +81,7 @@ describe("检查函数参数所有属性是否匹配", () => {
             ${renderParamAttrs.join('')};
         }`;
         const resultParams = inferFunctionType(origin, funName).params;
-        for (let param in paramsMap.entries()) {
-            const [key, attrs] = param;
+        for (let [key, attrs] of paramsMap.entries()) {
             // 参数结构
             if (attrs?.length) {
                 expect(resultParams[key!]?.origin?.length).toBe(attrs!.length);

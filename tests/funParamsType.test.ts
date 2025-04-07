@@ -11,8 +11,7 @@ describe("检查函数参数类型是否正常", () => {
         const origin = `function ${funName}(${params.join(',')}) {}`;
         const resultParams = inferFunctionType(origin, funName).params;
 
-        for (const param in paramsMap.entries()) {
-            const [key, type] = param;
+        for (const [key, type] of paramsMap.entries()) {
             expect(resultParams[key!]?.type).toBe(type!);
         }
     })
@@ -20,8 +19,7 @@ describe("检查函数参数类型是否正常", () => {
     test("箭头函数参数是否匹配", () => {
         const origin = `const ${funName} = (${params.join(',')}) => {}`;
         const resultParams = inferFunctionType(origin, funName).params;
-        for (const param in paramsMap.entries()) {
-            const [key, type] = param;
+        for (const [key, type] of paramsMap.entries()) {
             expect(resultParams[key!]?.type).toBe(type!);
         }
     })
@@ -29,8 +27,7 @@ describe("检查函数参数类型是否正常", () => {
     test("函数表达式参数是否匹配", () => {
         const origin = `const ${funName} = function (${params.join(',')}) {}`;
         const resultParams = inferFunctionType(origin, funName).params;
-        for (const param in paramsMap.entries()) {
-            const [key, type] = param;
+        for (const [key, type] of paramsMap.entries()) {
             expect(resultParams[key!]?.type).toBe(type!);
         }
     })

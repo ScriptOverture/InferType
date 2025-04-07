@@ -13,7 +13,7 @@ export function inferFunctionType(
     propertyAccesses?.forEach(expr => {
         const paramsKey = expr.getExpression().getText();
         if (funCache.has(paramsKey)) {
-            funCache.get(paramsKey)?.add(expr.getName());
+            funCache.get(paramsKey)?.add(expr.getName(), 'any');
         }
     });
 
@@ -74,7 +74,7 @@ export function inferFunctionType(
             bindingPattern.getElements().forEach(elem => {
                 const propName = elem.getPropertyNameNode()?.getText() || elem.getName();
                 const initializer = elem.getInitializer();
-                const defaultType = initializer?.getType()?.getBaseTypeOfLiteralType().getText()
+                const defaultType = initializer?.getType()?.getBaseTypeOfLiteralType().getText() || 'any'
                 iParamSet.add(propName, defaultType);
             });
         }
@@ -100,7 +100,7 @@ export function inferFunctionType(
                 const propName = propAccess.getName();
                 // 利用右侧表达式获取类型信息
                 const rightType = right.getType().getBaseTypeOfLiteralType().getText();
-                iParamSet.add(propName, rightType);
+                iParamSet.update(propName, rightType);
             }
         }
     }
