@@ -107,8 +107,17 @@ export function inferFunctionType(
 }
 
 
-const s = inferFunctionType(`function dd(d) {
-        d.dd = 1;
-    }`, 'dd').attributeData;
-    console.log(s.get('d')?.get('a'), s.get('d')?.get('b'), s.get('d')?.get('c'));
-    
+const {
+    attributeData: s,
+    params
+} = inferFunctionType(`
+    type Data = {
+        data: string
+    };
+    function dd({ data, age }: Data, {ww}: {ww: number}) {}
+    `, 'dd');
+console.log(s.get('d')?.get('a'), s.get('d')?.get('b'), s.get('d')?.get('c'));
+console.log(params);
+
+
+

@@ -56,12 +56,15 @@ describe("检查函数参数所有属性是否匹配", () => {
         }));
         const origin = `function ${funName}(${params.join(',')}) {}`;
         const resultParams = inferFunctionType(origin, funName).params;
+        let ind = 0;
         for (let [key, attrs] of paramsMap.entries()) {
             // 参数结构
             if (attrs?.length) {
-                expect(resultParams[key!]?.origin?.length).toBe(attrs!.length);
+                const origin = resultParams[params[ind]!]?.origin!;
+                ind += 1;
+                expect(Object.keys(origin).length).toBe(attrs!.length);
             } else {
-                expect(resultParams[key!]?.type).toBe(key!);
+                expect(resultParams[key!]?.type).toBe('any');
             }
         }
     })
@@ -81,12 +84,15 @@ describe("检查函数参数所有属性是否匹配", () => {
             ${renderParamAttrs.join('')};
         }`;
         const resultParams = inferFunctionType(origin, funName).params;
+        let ind = 0;
         for (let [key, attrs] of paramsMap.entries()) {
             // 参数结构
             if (attrs?.length) {
-                expect(resultParams[key!]?.origin?.length).toBe(attrs!.length);
+                const origin = resultParams[params[ind]!]?.origin!;
+                ind += 1;
+                expect(Object.keys(origin).length).toBe(attrs!.length);
             } else {
-                expect(resultParams[key!]?.type).toBe(key!);
+                expect(resultParams[key!]?.type).toBe('any');
             }
         }
     })

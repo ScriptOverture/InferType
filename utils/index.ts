@@ -1,7 +1,7 @@
 import { ParameterDeclaration, SyntaxKind, Node, BindingElement } from "ts-morph";
 type ParamType = {
     type: string;
-    origin: string | BindingElement[]
+    origin: Record<string, string>,
 }
 
 interface ParamsResult {
@@ -16,11 +16,24 @@ export function getAllParametersType(parasms: ParameterDeclaration[]) {
         const paramKey = item.getName();
         let resultParams: ParamType = {
             type: item.getType().getText(),
-            origin: paramKey
+            origin: {
+                [paramKey]: paramKey
+            }
         };
-
+        const paramType = item.getType();
         if (Node.isObjectBindingPattern(nameNode)) {
-            const bindingElements = nameNode.getElements();
+            const bindingElements = nameNode.getElements().reduce((result, item) => {
+                const localName = item.getName();
+                const originalName = item.getPropertyNameNode()?.getText() || localName;
+                const propSymbol = paramType.getProperty(originalName);
+                const typeText = propSymbol?.getTypeAtLocation(item)?.getText();
+
+                return {
+                    ...result,
+                    [originalName]: typeText || 'any'
+                };
+            }, {});
+
             // 如果是参数结构类型， 存储原始数组
             resultParams.origin = bindingElements;
         }

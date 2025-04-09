@@ -33,8 +33,43 @@ describe("检查函数结构后参数类型是否正常", () => {
                 } else {
                     expect(allKeyType?.get(type)).toBe('any');
                 }
-            })
-            
+            });
         }
     })
 });
+
+
+describe("检查参数解构属性的类型", () => {
+    const funName = 'test';
+    
+    const defaultType = {
+        name: 'string',
+        age: 'string',
+        a1: 'number',
+    };
+
+    const paramsMap = [
+        [`{name,age,a1}: {name:${defaultType.name},age:${defaultType.age},a1:${defaultType.a1}}`],
+        [`{age,a2}:DataType}`]
+    ];
+
+    test("检查参数解构属性的类型是否正常", () => {
+        const origin = `
+        type DataType = {
+            name: string,
+            age: string,
+            a1: number,
+        }
+        function ${funName}(${paramsMap.join(',')}) {
+        }`;
+        const paramsData = inferFunctionType(origin, funName).params;
+        const params_0 = paramsData[`{name,age,a1}`];
+        expect(params_0?.origin['name']).toBe(defaultType['name']);
+        expect(params_0?.origin['age']).toBe(defaultType['age']);
+        expect(params_0?.origin['a1']).toBe(defaultType['a1']);
+
+        const params_1 = paramsData[`{age,a2}`];
+        expect(params_1?.origin['age']).toBe(defaultType['age']);
+        expect(params_1?.origin['a2']).toBe('any');
+    })
+})
