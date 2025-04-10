@@ -29,9 +29,9 @@ describe("检查函数结构后参数类型是否正常", () => {
                 let type = item;
                 if (item.includes('=')) {
                     type = item.split('=')[0]?.trim()!;
-                    expect(allKeyType?.get(type)).toBe(defaultType[type as keyof typeof defaultType]);
+                    expect(allKeyType?.getValueStr(type)).toBe(defaultType[type as keyof typeof defaultType]);
                 } else {
-                    expect(allKeyType?.get(type)).toBe('any');
+                    expect(allKeyType?.getValueStr(type)).toBe('any');
                 }
             });
         }

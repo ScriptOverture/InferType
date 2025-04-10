@@ -1,4 +1,4 @@
-import { ParameterDeclaration, SyntaxKind, Node, BindingElement } from "ts-morph";
+import { ParameterDeclaration, Expression, Node, Identifier } from "ts-morph";
 type ParamType = {
     type: string;
     origin: Record<string, string>,
@@ -49,4 +49,15 @@ export function getAllParametersType(parasms: ParameterDeclaration[]) {
         params: {},
         length: parasms.length
     });
+}
+
+
+
+
+export function getRootIdentifier(expr: Expression): Identifier | undefined {
+    let cur: Expression = expr;
+    while (Node.isPropertyAccessExpression(cur)) {
+        cur = cur.getExpression();
+    }
+    return Node.isIdentifier(cur) ? cur : undefined;
 }

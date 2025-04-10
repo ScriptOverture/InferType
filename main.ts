@@ -1,23 +1,49 @@
-import { Node, Project, SyntaxKind, ts } from "ts-morph";
-import { getAllParametersType } from './utils';
-import { Cache } from "./lib/cache";
+import { ArrowFunction, FunctionDeclaration, FunctionExpression, Node, Project, SyntaxKind, ts, Expression, Identifier } from "ts-morph";
+import { getAllParametersType, getRootIdentifier } from './utils';
+import { Cache, type CacheValue } from "./lib/cache";
 
-export function inferFunctionType(
-    sourceStr: string,
-    targetFuncName: string
-) {
-    const project = new Project();
-    const sourceFile = project.createSourceFile("temp.ts", sourceStr);
+
+function Demo(funNode: FunctionExpression | ArrowFunction | FunctionDeclaration) {
+    const iFunction = funNode as unknown as FunctionExpression | ArrowFunction | FunctionDeclaration;
     const { params, body, propertyAccesses } = getFunction();
-    const funCache = Cache<ReturnType<typeof Cache<string | null>>>().initializerCache(params.params);
+    const funCache = Cache<string>().initializerCache(params.params);
     propertyAccesses?.forEach(expr => {
-        const paramsKey = expr.getExpression().getText();
+        const llAccess = expr.getExpression();
+        let paramsKey = llAccess.getText();
+        let attrName = expr.getName();
+        let type: CacheValue<any> | string = 'any';
+        if (attrName === 'forEach') {
+            let callExpr = expr.getParentIfKindOrThrow(SyntaxKind.CallExpression);
+            const cb = callExpr.getArguments()[0];
+
+            if (!Node.isArrowFunction(cb) && !Node.isFunctionExpression(cb)) {
+                throw new Error("forEach 的参数不是函数！");
+            }
+
+            if (Node.isPropertyAccessExpression(llAccess)) {
+                const cbMap = Demo(cb).attributeData?.getOriginMap();
+                attrName = llAccess.getName();
+                paramsKey = getRootIdentifier(llAccess)?.getText()!;
+                const params = cb.getParameters()[0]?.getName();
+                type = cbMap.get(params!);
+            }
+
+        }
+
         if (funCache.has(paramsKey)) {
-            funCache.get(paramsKey)?.add(expr.getName(), 'any');
+            funCache.get(paramsKey)?.add(attrName, type);
         }
     });
 
-    body.forEachDescendant((node) => {
+    function getFunction() {
+        return {
+            body: iFunction!.getBody(),
+            params: getAllParametersType(iFunction?.getParameters()!),
+            propertyAccesses: iFunction?.getDescendantsOfKind(SyntaxKind.PropertyAccessExpression)
+        };
+    }
+
+    body?.forEachDescendant((node) => {
         const lineKind = node.getKind();
         switch (lineKind) {
             // 变量申明
@@ -35,31 +61,6 @@ export function inferFunctionType(
         ...params,
         attributeData: funCache
     };
-
-    function getFunction() {
-        let iFunction = sourceFile.getFunction(targetFuncName)!;
-        let iFunctionBody, iFunctionParams, iPropertyAccesses;
-        if (iFunction) {
-            iFunctionBody = iFunction.getBodyOrThrow();
-            iFunctionParams = getAllParametersType(iFunction.getParameters());
-            iPropertyAccesses = iFunction?.getDescendantsOfKind(SyntaxKind.PropertyAccessExpression)
-        } else {
-            // 获取变量声明（即函数表达式所在的位置）
-            const variableDeclaration = sourceFile.getVariableDeclaration(targetFuncName);
-            const initializer = variableDeclaration?.getInitializer();
-            const funParams = variableDeclaration?.getInitializerIfKind(initializer?.getKind()! as SyntaxKind.FunctionExpression);
-            iFunctionBody = funParams!.getBody();
-            iPropertyAccesses = funParams?.getDescendantsOfKind(SyntaxKind.PropertyAccessExpression)
-            iFunctionParams = getAllParametersType(funParams?.getParameters()!);
-        }
-
-        return {
-            body: iFunctionBody,
-            params: iFunctionParams,
-            propertyAccesses: iPropertyAccesses
-        };
-    }
-
 
     function toVariableDeclaration(node: Node<ts.Node>) {
         const varDecl = node.asKindOrThrow(SyntaxKind.VariableDeclaration);
@@ -106,6 +107,29 @@ export function inferFunctionType(
     }
 }
 
+export function inferFunctionType(
+    sourceStr: string,
+    targetFuncName: string
+) {
+    const project = new Project();
+    const sourceFile = project.createSourceFile("temp.ts", sourceStr);
+
+    return Demo(getFunction());
+
+    function getFunction() {
+        let iFunction: FunctionExpression | FunctionDeclaration = sourceFile.getFunction(targetFuncName)!;
+        if (!iFunction) {
+            // 获取变量声明（即函数表达式所在的位置）
+            const variableDeclaration = sourceFile.getVariableDeclaration(targetFuncName);
+            const initializer = variableDeclaration?.getInitializer();
+            const funParams = variableDeclaration?.getInitializerIfKind(initializer?.getKind()! as SyntaxKind.FunctionExpression)!;
+            iFunction = funParams;
+        }
+
+        return iFunction;
+    }
+}
+
 
 const {
     attributeData: s,
@@ -114,10 +138,20 @@ const {
     type Data = {
         data: string
     };
-    function dd({ data, age }: Data, {ww}: {ww: number}) {}
+    function dd(props, { data, age }: Data) {
+        props.data = 1;
+        props.name = "123";
+        props.list = [1,2,3];
+        props.ll.forEach(item => {
+            item.n = 1;
+            item.a = 'asd';
+            item.l = [1,2,3];
+        })
+        props.jk.map(item => ({...item, a: item.a, b: item.b}))
+    }
     `, 'dd');
 console.log(s.get('d')?.get('a'), s.get('d')?.get('b'), s.get('d')?.get('c'));
-console.log(params);
+console.log(s.get('props')?.get('ll').get('l'), s.get('props')?.get('ll').get('a'));
 
 
 
