@@ -1,44 +1,57 @@
-import { ArrowFunction, FunctionDeclaration, FunctionExpression, Node, Project, SyntaxKind, ts, Expression, Identifier } from "ts-morph";
-import { getAllParametersType, getRootIdentifier } from './utils';
-import { Cache, type CacheValue } from "./lib/cache";
+import { ArrowFunction, FunctionDeclaration, FunctionExpression, Node, Project, SyntaxKind, ts } from "ts-morph";
+import { convertTypeNode } from './utils';
+import { createScope, createVariable } from "./lib/NodeType";
+
 
 
 function Demo(funNode: FunctionExpression | ArrowFunction | FunctionDeclaration) {
     const iFunction = funNode as unknown as FunctionExpression | ArrowFunction | FunctionDeclaration;
     const { params, body, propertyAccesses } = getFunction();
-    const funCache = Cache<string>().initializerCache(params.params);
-    propertyAccesses?.forEach(expr => {
-        const llAccess = expr.getExpression();
-        let paramsKey = llAccess.getText();
-        let attrName = expr.getName();
-        let type: CacheValue<any> | string = 'any';
-        if (attrName === 'forEach') {
-            let callExpr = expr.getParentIfKindOrThrow(SyntaxKind.CallExpression);
-            const cb = callExpr.getArguments()[0];
 
-            if (!Node.isArrowFunction(cb) && !Node.isFunctionExpression(cb)) {
-                throw new Error("forEach 的参数不是函数！");
-            }
+    // const {
+    //     initializer,
+    //     propsHas,
+    //     getPropsAttrs,
+    //     contentVO,
+    //     localVariables
+    // } = getFunctionMetadata(params);
+    // initializer(propertyAccesses);
 
-            if (Node.isPropertyAccessExpression(llAccess)) {
-                const cbMap = Demo(cb).attributeData?.getOriginMap();
-                attrName = llAccess.getName();
-                paramsKey = getRootIdentifier(llAccess)?.getText()!;
-                const params = cb.getParameters()[0]?.getName();
-                type = cbMap.get(params!);
-            }
+    const scope = createScope(params);
 
-        }
-
-        if (funCache.has(paramsKey)) {
-            funCache.get(paramsKey)?.add(attrName, type);
-        }
-    });
+    // const funCache = Cache<string>().initializerCache(params.params);
+    // propertyAccesses?.forEach(expr => {
+    //     const llAccess = expr.getExpression();
+    //     let paramsKey = llAccess.getText();
+    //     let attrName = expr.getName();
+    //     let type: CacheValue<any> | string = 'any';
+    //     if (attrName === 'forEach') {
+    //         let callExpr = expr.getParentIfKindOrThrow(SyntaxKind.CallExpression);
+    //         const cb = callExpr.getArguments()[0];
+    //
+    //         if (!Node.isArrowFunction(cb) && !Node.isFunctionExpression(cb)) {
+    //             throw new Error("forEach 的参数不是函数！");
+    //         }
+    //
+    //         if (Node.isPropertyAccessExpression(llAccess)) {
+    //             const cbMap = Demo(cb).attributeData?.getOriginMap();
+    //             attrName = llAccess.getName();
+    //             paramsKey = getRootIdentifier(llAccess)?.getText()!;
+    //             const params = cb.getParameters()[0]?.getName();
+    //             type = cbMap.get(params!);
+    //         }
+    //
+    //     }
+    //
+    //     if (funCache.has(paramsKey)) {
+    //         funCache.get(paramsKey)?.add(attrName, type);
+    //     }
+    // });
 
     function getFunction() {
         return {
             body: iFunction!.getBody(),
-            params: getAllParametersType(iFunction?.getParameters()!),
+            params: iFunction?.getParameters()!,
             propertyAccesses: iFunction?.getDescendantsOfKind(SyntaxKind.PropertyAccessExpression)
         };
     }
@@ -59,29 +72,37 @@ function Demo(funNode: FunctionExpression | ArrowFunction | FunctionDeclaration)
 
     return {
         ...params,
-        attributeData: funCache
+        attributeData: {}
     };
 
     function toVariableDeclaration(node: Node<ts.Node>) {
         const varDecl = node.asKindOrThrow(SyntaxKind.VariableDeclaration);
         const initializer = varDecl.getInitializer();
         const paramKey = initializer?.getText()!;
-        if (!funCache.has(paramKey)) return;
-        const iParamSet = funCache.get(paramKey)!;
+        
+        const targetParam = scope.findParameter(paramKey);
+
         const nameNode = varDecl.getNameNode();
         // 对象解构：例如 const { name, data } = props;
         if (nameNode.getKind() === SyntaxKind.ObjectBindingPattern) {
             const bindingPattern = nameNode.asKindOrThrow(SyntaxKind.ObjectBindingPattern);
-            bindingPattern.getElements().forEach(elem => {
+
+            const obj = bindingPattern.getElements().reduce((result, elem) => {
                 const propName = elem.getPropertyNameNode()?.getText() || elem.getName();
                 const initializer = elem.getInitializer();
-                const defaultType = initializer?.getType()?.getBaseTypeOfLiteralType().getText() || 'any'
-                iParamSet.add(propName, defaultType);
-            });
+                const iType = initializer?.getType()?.getBaseTypeOfLiteralType();
+                return {
+                    ...result,
+                    [propName]: createVariable(iType!)
+                }
+            }, {})
+            
+            targetParam.creatDestructured(obj);
         }
         // 简单别名赋值：例如 const copyProps = props;
         else if (nameNode.getKind() === SyntaxKind.Identifier) {
-            iParamSet.add(nameNode.getText());
+            // iParamSet.add(nameNode.getText());
+            console.log(paramKey, nameNode.getText(), '>>>>>>>')
         }
     }
 
@@ -96,18 +117,20 @@ function Demo(funNode: FunctionExpression | ArrowFunction | FunctionDeclaration)
                 const propAccess = left.asKindOrThrow(SyntaxKind.PropertyAccessExpression);
                 const paramKey = propAccess.getExpression().getText();
 
-                if (!funCache.has(paramKey)) return;
-                const iParamSet = funCache.get(paramKey)!;
+                // if (!funCache.has(paramKey)) return;
+                // const iParamSet = funCache.get(paramKey)!;
                 const propName = propAccess.getName();
                 // 利用右侧表达式获取类型信息
                 const rightType = right.getType().getBaseTypeOfLiteralType().getText();
-                iParamSet.update(propName, rightType);
+                console.log(paramKey, propName, rightType, 'ccccccccccccccccccccccccccccc');
+                
+                // iParamSet.update(propName, rightType);
             }
         }
     }
 }
 
-export function inferFunctionType(
+export async function inferFunctionType(
     sourceStr: string,
     targetFuncName: string
 ) {
@@ -136,12 +159,20 @@ const {
     params
 } = inferFunctionType(`
     type Data = {
-        data: string
+        data: string;
+        list: number;
+        age: boolean
     };
-    function dd(props, { data, age }: Data) {
+    function dd(props) {
+    const { a,b = '123',c = "2134234234" } = props;
+    const { e,f,r} = a;
+    let aaa = 123;
         props.data = 1;
+        props.t.q.w.e = 1;
         props.name = "123";
         props.list = [1,2,3];
+        data.name = 1;
+        age.kk = 123;
         props.ll.forEach(item => {
             item.n = 1;
             item.a = 'asd';
@@ -150,8 +181,11 @@ const {
         props.jk.map(item => ({...item, a: item.a, b: item.b}))
     }
     `, 'dd');
-console.log(s.get('d')?.get('a'), s.get('d')?.get('b'), s.get('d')?.get('c'));
-console.log(s.get('props')?.get('ll').get('l'), s.get('props')?.get('ll').get('a'));
+
+
+
+// console.log(s.get('d')?.get('a'), s.get('d')?.get('b'), s.get('d')?.get('c'));
+// console.log(s.get('props')?.get('ll').get('l'), s.get('props')?.get('ll').get('a'));
 
 
 

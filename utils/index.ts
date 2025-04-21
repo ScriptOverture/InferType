@@ -1,55 +1,90 @@
-import { ParameterDeclaration, Expression, Node, Identifier } from "ts-morph";
-type ParamType = {
-    type: string;
-    origin: Record<string, string>,
-}
+import {Expression, Identifier, Node, ParameterDeclaration, ts, Type} from "ts-morph";
+import {AnyType, BooleanType, NumberType, StringType, ObjectType, UnionType, type BaseType, BasicType, createVariable} from "../lib/NodeType.ts";
+import TypeFlags = ts.TypeFlags;
 
-interface ParamsResult {
-    params: Partial<Record<string, ParamType>>;
-    length: number;
-}
+export enum ParamsKind {
+    // 必选参数
+    Required,
+    // 默认参数 
+    Default,
+    // 剩余参数
+    Rest,
+    // 解构参数
+    Destructured
+};
+
+
+export type Parameters = any
 
 export function getAllParametersType(parasms: ParameterDeclaration[]) {
-    return parasms.reduce<ParamsResult>((result, item) => {
+    const result = {
+        parasmsList: [],
+        paramsMap: {}
+    }
 
-        const nameNode = item.getNameNode();
-        const paramKey = item.getName();
-        let resultParams: ParamType = {
-            type: item.getType().getText(),
-            origin: {
-                [paramKey]: paramKey
-            }
+    return parasms.reduce((newRes, paramsItem, index) => {
+        const nameNode = paramsItem.getNameNode();
+        const paramKey = paramsItem.getName();
+        const paramType = paramsItem.getType();
+        let result: Parameters = {
+            index,
+            // 默认必填参数类型
+            kind: ParamsKind.Required,
+            paramName: paramKey,
+            paramType: createVariable(paramType)
         };
-        const paramType = item.getType();
+        // 参数是否解构
         if (Node.isObjectBindingPattern(nameNode)) {
-            const bindingElements = nameNode.getElements().reduce((result, item) => {
-                const localName = item.getName();
-                const originalName = item.getPropertyNameNode()?.getText() || localName;
-                const propSymbol = paramType.getProperty(originalName);
-                const typeText = propSymbol?.getTypeAtLocation(item)?.getText();
 
-                return {
-                    ...result,
-                    [originalName]: typeText || 'any'
-                };
-            }, {});
-
-            // 如果是参数结构类型， 存储原始数组
-            resultParams.origin = bindingElements;
         }
 
         return {
-            ...result,
-            params: {
-                ...result.params,
-                [paramKey]: resultParams
-            }
-        }
-    }, {
-        params: {},
-        length: parasms.length
-    });
+            ...newRes,
+            paramsMap: {
+                ...newRes.paramsMap,
+                [paramKey]: result.paramType
+            },
+            parasmsList: newRes.parasmsList.concat(result)
+        };
+    }, result);
+    //  parasms.map((paramsItem, index) => {
+    //     const nameNode = paramsItem.getNameNode();
+    //     const paramKey = paramsItem.getName();
+    //     const paramType = paramsItem.getType();
+    //     let result: Parameters = {
+    //         index,
+    //         kind: ParamsKind.Required,
+    //         paramName: paramKey,
+    //         paramType: convertTypeNode(paramType)
+    //     };
+    //     // 参数是否解构
+    //     if (Node.isObjectBindingPattern(nameNode)) {
+    //         const {params} = nameNode.getElements().reduce<{
+    //             params: string[];
+    //         }>((results, item) => {
+    //             const localName = item.getName();
+    //             const originalName = item.getPropertyNameNode()?.getText() || localName;
+    //             const propSymbol = paramType.getProperty(originalName);
+    //             const itype = propSymbol?.getTypeAtLocation(item);
+    //             // if (!paramsItem.getTypeNode() && itype) {
+    //             //     result.paramType.addType(originalName, new TsMorphTypeConverter().convertType(itype));
+    //             // }
+    //             return {
+    //                 params: results.params.concat(originalName),
+    //             }
+    //         }, {params: []});
+
+    //         result = {
+    //             ...result,
+    //             kind: ParamsKind.Destructured,
+    //             paramName: params,
+    //         };
+    //     }
+    //     return result;
+    // })
 }
+
+
 
 
 
@@ -60,4 +95,44 @@ export function getRootIdentifier(expr: Expression): Identifier | undefined {
         cur = cur.getExpression();
     }
     return Node.isIdentifier(cur) ? cur : undefined;
+}
+
+
+export function convertTypeNode(iType: Type<ts.Type>): BaseType {
+    if (!iType) return new AnyType();
+    if (iType.isString()) return new BasicType(new StringType());
+    if (iType.isNumber()) return new BasicType(new NumberType());
+    if (iType.isBoolean()) return new BasicType(new BooleanType());
+    if (iType.isUnion()) return convertUnionType(iType);
+    if (iType.isObject()) return convertObjectType(iType);
+    return new AnyType();
+}
+
+
+function convertObjectType(iType: Type<ts.Type>): ObjectType {
+    const properties: Record<string, any> = {};
+    // 处理显式属性
+    for (const property of iType.getProperties()) {
+        const name = property.getName();
+        const propertyDeclaration = property.getValueDeclaration();
+        if (propertyDeclaration) {
+            properties[name] = convertTypeNode(propertyDeclaration.getType());
+        }
+    }
+
+    // 处理索引签名
+    // const indexSignatures = type.getIndexSignatures();
+    // if (indexSignatures.length > 0) {
+    //     const indexType = this.convertIndexSignature(indexSignatures[0]);
+    //     return new EnhancedObjectType(properties, indexType);
+    // }
+
+    return new ObjectType(properties);
+}
+
+
+function convertUnionType(iType: Type<ts.Type>): UnionType {
+    return new UnionType(
+        iType.getUnionTypes().map(t => convertTypeNode(t))
+    );
 }

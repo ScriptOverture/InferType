@@ -1,3 +1,6 @@
+import {type Parameters, ParamsKind} from "../utils";
+import {PropertyAccessExpression, ts} from "ts-morph";
+
 export type CacheValue<T> = T | undefined | CacheType<T>;
 
 export type CacheType<T> = {
@@ -52,3 +55,122 @@ export function Cache<T>(): CacheType<T> {
 function isCache<T>(value: any): value is CacheType<T> {
   return value && typeof value.update === 'function';
 }
+
+function createMap() {
+    let map = {};
+    return {
+        add(params: ToFunction) {
+            if (!params) return;
+
+            const newV = toFunction(params)(map);
+            map = {
+                ...map,
+                ...newV
+            }
+            
+        },
+        has(key: string) {
+            return map.hasOwnProperty(key);
+        },
+        get map() {
+            return map;
+        }
+    }
+}
+
+function isFunction<T>(params: T) {
+    return typeof params === 'function';
+}
+
+type ToFunction = object | ((data: object) => object);
+function toFunction(params: ToFunction) {
+    if (isFunction(params)) {
+        return params;
+    }
+    return (data: object) => ({
+        ...params,
+        ...data,
+    });
+}
+
+
+export function getFunctionMetadata(targetParams:  Parameters[]) {
+
+    const contentVO =  {
+        parameters: targetParams,
+        localVariables: createMap(),
+        prototype: {}
+    }
+
+    const { paramsMap } = targetParams.reduce((records, item, index) => {
+        if (item.kind === ParamsKind.A_2) {
+            const map = {}
+            item.paramName.forEach(param => {
+                contentVO.localVariables.add({
+                    [param]: {}
+                });
+                records.paramsMap[param] = {
+                    index,
+                    attr: createMap()
+                }
+            })
+        } else if (item.kind === ParamsKind.A_1) {
+            records.paramsMap[item.paramName] = {
+                index,
+                attr: createMap()
+            }
+            contentVO.localVariables.add({
+                [item.paramName]: {}
+            })
+        }
+        return records;
+    }, {
+        paramsMap: {},
+    });
+
+    function get(key) {
+        if (paramsMap.hasOwnProperty(key)) {
+
+        }
+    }
+
+    const self =  {
+        initializer,
+        contentVO,
+        propsHas(key: string) {
+            return key in paramsMap;
+        },
+        getPropsAttrs(key: string, kind: ParamsKind = ParamsKind.A_1) {
+            if (!key || !self.propsHas(key)) return null;
+            return paramsMap[key]
+        },
+        addPropsAttr(attrName: string, val: any) {
+            const attrs = self.getPropsAttrs(attrName);
+        },
+        localVariables: contentVO.localVariables
+
+    }
+    return self
+
+    function initializer(paramsVariables:  PropertyAccessExpression<ts.PropertyAccessExpression>[]) {
+        paramsVariables?.forEach(expr => {
+            const llAccess = expr.getExpression();
+            let paramsKey = llAccess.getText();
+            let attrName = expr.getName();
+            let type: CacheValue<any> | string = 'any';
+
+            // if (paramsMap.hasOwnProperty(paramsKey)) {
+            //     paramsMap[paramsKey]['attr'] = {
+            //         ...paramsMap[paramsKey]['attr'],
+            //         [attrName]: type
+            //     };
+            //     // funCache.get(paramsKey)?.add(attrName, type);
+            // }
+        });
+        Promise.resolve().then(() => {
+            console.log(paramsMap, contentVO.localVariables);
+        })
+
+    }
+}
+

@@ -7,7 +7,8 @@
   },
   "scripts": {
     "dev": "bun run main.ts",
-    "test": "bun test"
+    "test": "bun test",
+    "debug": "bun --inspect-wait=localhost:6499/ main.ts"
   },
   "devDependencies": {
     "@types/bun": "latest",
