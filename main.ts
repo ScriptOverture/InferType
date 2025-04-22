@@ -4,49 +4,42 @@ import { createScope, createVariable } from "./lib/NodeType";
 
 
 
-function Demo(funNode: FunctionExpression | ArrowFunction | FunctionDeclaration) {
+function parseFunctionBody(
+    funNode: FunctionExpression | ArrowFunction | FunctionDeclaration,
+    scopePrototype: any = {}
+) {
     const iFunction = funNode as unknown as FunctionExpression | ArrowFunction | FunctionDeclaration;
     const { params, body, propertyAccesses } = getFunction();
-
-    // const {
-    //     initializer,
-    //     propsHas,
-    //     getPropsAttrs,
-    //     contentVO,
-    //     localVariables
-    // } = getFunctionMetadata(params);
-    // initializer(propertyAccesses);
-
-    const scope = createScope(params);
-
-    // const funCache = Cache<string>().initializerCache(params.params);
-    // propertyAccesses?.forEach(expr => {
-    //     const llAccess = expr.getExpression();
-    //     let paramsKey = llAccess.getText();
-    //     let attrName = expr.getName();
-    //     let type: CacheValue<any> | string = 'any';
-    //     if (attrName === 'forEach') {
-    //         let callExpr = expr.getParentIfKindOrThrow(SyntaxKind.CallExpression);
-    //         const cb = callExpr.getArguments()[0];
-    //
-    //         if (!Node.isArrowFunction(cb) && !Node.isFunctionExpression(cb)) {
-    //             throw new Error("forEach 的参数不是函数！");
-    //         }
-    //
-    //         if (Node.isPropertyAccessExpression(llAccess)) {
-    //             const cbMap = Demo(cb).attributeData?.getOriginMap();
-    //             attrName = llAccess.getName();
-    //             paramsKey = getRootIdentifier(llAccess)?.getText()!;
-    //             const params = cb.getParameters()[0]?.getName();
-    //             type = cbMap.get(params!);
-    //         }
-    //
-    //     }
-    //
-    //     if (funCache.has(paramsKey)) {
-    //         funCache.get(paramsKey)?.add(attrName, type);
-    //     }
-    // });
+    const scope = createScope(params, {}, scopePrototype);
+    propertyAccesses?.forEach(expr => {
+        const llAccess = expr.getExpression();
+        let paramsKey = llAccess.getText();
+        let attrName = expr.getName();
+        let type = 'any';
+        // if (attrName === 'forEach') {
+        //     let callExpr = expr.getParentIfKindOrThrow(SyntaxKind.CallExpression);
+        //     const cb = callExpr.getArguments()[0];
+    
+        //     if (!Node.isArrowFunction(cb) && !Node.isFunctionExpression(cb)) {
+        //         throw new Error("forEach 的参数不是函数！");
+        //     }
+    
+        //     if (Node.isPropertyAccessExpression(llAccess)) {
+        //         const cbMap = Demo(cb).attributeData?.getOriginMap();
+        //         attrName = llAccess.getName();
+        //         paramsKey = getRootIdentifier(llAccess)?.getText()!;
+        //         const params = cb.getParameters()[0]?.getName();
+        //         type = cbMap.get(params!);
+        //     }
+    
+        // }
+    
+        // if (funCache.has(paramsKey)) {
+        //     funCache.get(paramsKey)?.add(attrName, type);
+        // }
+        console.log(paramsKey, attrName, 'paramsKey');
+        
+    });
 
     function getFunction() {
         return {
@@ -79,8 +72,6 @@ function Demo(funNode: FunctionExpression | ArrowFunction | FunctionDeclaration)
         const varDecl = node.asKindOrThrow(SyntaxKind.VariableDeclaration);
         const initializer = varDecl.getInitializer();
         const paramKey = initializer?.getText()!;
-        
-        const targetParam = scope.findParameter(paramKey);
 
         const nameNode = varDecl.getNameNode();
         // 对象解构：例如 const { name, data } = props;
@@ -97,12 +88,24 @@ function Demo(funNode: FunctionExpression | ArrowFunction | FunctionDeclaration)
                 }
             }, {})
             
-            targetParam.creatDestructured(obj);
+            scope.findParameter(paramKey)?.creatDestructured(obj);
         }
         // 简单别名赋值：例如 const copyProps = props;
         else if (nameNode.getKind() === SyntaxKind.Identifier) {
-            // iParamSet.add(nameNode.getText());
-            console.log(paramKey, nameNode.getText(), '>>>>>>>')
+            const init = varDecl.getInitializerOrThrow();
+            let rhsType;
+            if (Node.isIdentifier(init)) {
+                const rhsName = init.getText();
+                rhsType = scope.find(rhsName);
+            } else {
+                const aliasType = varDecl.getType();
+                rhsType = createVariable(aliasType);
+            }
+            
+            scope.createLocalVariable(
+                nameNode.getText(),
+                rhsType!
+            );
         }
     }
 
@@ -122,7 +125,7 @@ function Demo(funNode: FunctionExpression | ArrowFunction | FunctionDeclaration)
                 const propName = propAccess.getName();
                 // 利用右侧表达式获取类型信息
                 const rightType = right.getType().getBaseTypeOfLiteralType().getText();
-                console.log(paramKey, propName, rightType, 'ccccccccccccccccccccccccccccc');
+                // console.log(paramKey, propName, rightType, 'ccccccccccccccccccccccccccccc');
                 
                 // iParamSet.update(propName, rightType);
             }
@@ -136,8 +139,12 @@ export async function inferFunctionType(
 ) {
     const project = new Project();
     const sourceFile = project.createSourceFile("temp.ts", sourceStr);
+    const Global = createScope();
 
-    return Demo(getFunction());
+    return parseFunctionBody(
+        getFunction(),
+        Global
+    );
 
     function getFunction() {
         let iFunction: FunctionExpression | FunctionDeclaration = sourceFile.getFunction(targetFuncName)!;
@@ -165,8 +172,18 @@ const {
     };
     function dd(props) {
     const { a,b = '123',c = "2134234234" } = props;
-    const { e,f,r} = a;
     let aaa = 123;
+    const w = {
+        ww: 123,
+        rr: aaa,
+        ee: {
+            c: props
+        }
+    };
+    w.a = props;
+    let y = props;
+    aaa = 4444;
+    var ww = [];
         props.data = 1;
         props.t.q.w.e = 1;
         props.name = "123";

@@ -96,7 +96,11 @@ export class ObjectType extends Type {
         if (other instanceof AnyType) return this;
         if (other instanceof ObjectType) {
             for (let k in other.properties) {
-                this.properties[k] = other.properties[k];
+                if (this.properties.hasOwnProperty(k)) {
+                    this.properties[k] = new UnionType([this.properties[k]!, other.properties[k]!]);
+                } else {
+                    this.properties[k] = other.properties[k]!;
+                }
             }
             return this;
         }
@@ -150,12 +154,12 @@ export class DynamicType {
 }
 
 
-type Variable = {
+export type Variable = {
     ref: VariableTypeRef,
     currentType: BaseType,
     setTypeRef: (ref: BaseType) => void,
     get: (key: string) => BaseType | undefined,
-    combine: (data: Variable) => BaseType;
+    combine: (data: Variable) => Variable;
     toString: () => string
 }
 
@@ -177,9 +181,9 @@ export function createVariable(iType: VariableTypeRef | MorphType<ts.Type> | Bas
         typeRef = { current: convertTypeNode(iType) };
     }
     // 内联缓存预留
-    let references = new Set<VariableRef>();
+    let references = new Set<VariableTypeRef>();
 
-    return {
+    const self = {
         get ref(){ return typeRef },
         get currentType() { return typeRef.current },
         setTypeRef(ref: BaseType) {
@@ -192,44 +196,56 @@ export function createVariable(iType: VariableTypeRef | MorphType<ts.Type> | Bas
             }
         },
         combine: (c: Variable) => {
-            return typeRef.current.combine(c.currentType)
+            typeRef.current = typeRef.current.combine(c.currentType)
+            return self;
         },
         toString: () => {
             return typeRef.current.toString()
         }
     }
+
+    return self;
 }
 
 import type { ParameterDeclaration, Type as MorphType, ts } from 'ts-morph';
 import { getAllParametersType, convertTypeNode } from '../utils/index';
 
 type Scope = {
-    find(name: string): BaseType | undefined;
-    createParameterDestructured(name: string): void;
+    find(name: string): Variable | undefined;
     createLocalVariable(name: string, iType: BaseType): void;
-    findParameter(paramName: string): void;
+    findParameter(paramName: string): TargetParamter | null;
+    paramsMap: Record<string, Variable>
+};
+
+type TargetParamter = {
+    creatDestructured: (recordType: Record<string, BaseType>) => void
 };
 
 export function createScope(
     parameters: ParameterDeclaration[] = [],
-    localVariables: Record<string, BaseType> = {},
+    localVariables: Record<string, Variable> = {},
     prototype?: Scope
 ) {
     const { paramsMap, parasmsList } = getAllParametersType(parameters);
     
     const _resultSelf: Scope = {
         find,
-        createParameterDestructured,
         createLocalVariable,
-        findParameter
+        findParameter,
+        paramsMap
     }
 
     Promise.resolve().then(_ => {
-        console.log( paramsMap['props'].currentType.toString(), '>>>>');
+        console.log(
+            localVariables['w']?.currentType?.toString(),
+            paramsMap['props']?.currentType?.toString(), 
+            localVariables, 
+            '>>>>'
+        );
     })
     function findParameter(paramName: string) {
         const targetType = find(paramName);
-        if (!targetType) return false;
+        if (!targetType) return null;
         const { currentType } = targetType;
         
         if (!(currentType instanceof ObjectType)) {
@@ -237,13 +253,13 @@ export function createScope(
         }
         return {
             creatDestructured(recordType: Record<string, BaseType>) {
-                // const t = new ObjectType(recordType);
                 const variable = createVariable(new ObjectType(recordType));
                 targetType.combine(variable);
+                
                 for (const k in recordType) {
                     if (localVariables.hasOwnProperty(k)) {
                         // 有 同步bug
-                        localVariables[k] = localVariables[k]?.combine(variable.get(k)!)!;
+                        localVariables[k] = localVariables[k]?.combine(variable.get(k)!)!
                     } else {
                         localVariables[k] = variable.get(k)!;
                     }
@@ -258,13 +274,8 @@ export function createScope(
             || prototype?.find(name);
     }
 
-    function createParameterDestructured(name: string, iType: BaseType) {
-        const prevType = paramsMap[name];
-
-    }
-
-    function createLocalVariable(name: string) {
-        localVariables[name] = createVariable(name, _resultSelf);;
+    function createLocalVariable(name: string, variable: Variable) {
+        localVariables[name] = variable;
     }
 
     return _resultSelf

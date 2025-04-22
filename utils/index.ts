@@ -1,5 +1,5 @@
 import {Expression, Identifier, Node, ParameterDeclaration, ts, Type} from "ts-morph";
-import {AnyType, BooleanType, NumberType, StringType, ObjectType, UnionType, type BaseType, BasicType, createVariable} from "../lib/NodeType.ts";
+import {AnyType, BooleanType, NumberType, StringType, ObjectType, UnionType, type BaseType, BasicType, createVariable, type Variable} from "../lib/NodeType.ts";
 import TypeFlags = ts.TypeFlags;
 
 export enum ParamsKind {
@@ -16,7 +16,12 @@ export enum ParamsKind {
 
 export type Parameters = any
 
-export function getAllParametersType(parasms: ParameterDeclaration[]) {
+type ParametersResultType = {
+    paramsMap: Record<string, Variable>,
+    parasmsList: any
+};
+
+export function getAllParametersType(parasms: ParameterDeclaration[]): ParametersResultType {
     const result = {
         parasmsList: [],
         paramsMap: {}
