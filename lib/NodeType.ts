@@ -43,6 +43,24 @@ export class BooleanType extends Type {
     }
 }
 
+export class ArrayType extends Type {
+    constructor(public elementType: Type = new AnyType()) {
+      super();
+    }
+  
+    toString() {
+      return `${this.elementType}[]`;
+    }
+  
+    combine(other: Type): Type {
+      if (other instanceof AnyType) return this;
+      if (other instanceof ArrayType) {
+        return new ArrayType(this.elementType.combine(other.elementType));
+      }
+      return new UnionType([this, other]);
+    }
+  }
+
 
 export class BasicType extends Type {
     constructor(public targetType: Type) {
@@ -237,9 +255,7 @@ export function createScope(
 
     Promise.resolve().then(_ => {
         console.log(
-            localVariables['w']?.currentType?.toString(),
             paramsMap['props']?.currentType?.toString(), 
-            localVariables, 
             '>>>>'
         );
     })

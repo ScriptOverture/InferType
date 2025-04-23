@@ -1,5 +1,5 @@
 import {Expression, Identifier, Node, ParameterDeclaration, ts, Type} from "ts-morph";
-import {AnyType, BooleanType, NumberType, StringType, ObjectType, UnionType, type BaseType, BasicType, createVariable, type Variable} from "../lib/NodeType.ts";
+import {AnyType, BooleanType, NumberType, StringType, ObjectType, UnionType, type BaseType, BasicType, createVariable, type Variable, ArrayType} from "../lib/NodeType.ts";
 import TypeFlags = ts.TypeFlags;
 
 export enum ParamsKind {
@@ -109,6 +109,7 @@ export function convertTypeNode(iType: Type<ts.Type>): BaseType {
     if (iType.isNumber()) return new BasicType(new NumberType());
     if (iType.isBoolean()) return new BasicType(new BooleanType());
     if (iType.isUnion()) return convertUnionType(iType);
+    if (iType.isArray()) return convertArrayType(iType);
     if (iType.isObject()) return convertObjectType(iType);
     return new AnyType();
 }
@@ -125,7 +126,7 @@ function convertObjectType(iType: Type<ts.Type>): ObjectType {
         }
     }
 
-    // 处理索引签名
+    // // 处理索引签名
     // const indexSignatures = type.getIndexSignatures();
     // if (indexSignatures.length > 0) {
     //     const indexType = this.convertIndexSignature(indexSignatures[0]);
@@ -140,4 +141,10 @@ function convertUnionType(iType: Type<ts.Type>): UnionType {
     return new UnionType(
         iType.getUnionTypes().map(t => convertTypeNode(t))
     );
+}
+
+
+function convertArrayType(iType: Type<ts.Type>): ArrayType {
+    const lhsType = convertTypeNode(iType.getArrayElementTypeOrThrow());
+    return new ArrayType(lhsType);
 }

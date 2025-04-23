@@ -1,6 +1,6 @@
 import { ArrowFunction, FunctionDeclaration, FunctionExpression, Node, Project, SyntaxKind, ts } from "ts-morph";
 import { convertTypeNode } from './utils';
-import { createScope, createVariable } from "./lib/NodeType";
+import { createScope, createVariable, ObjectType } from "./lib/NodeType";
 
 
 
@@ -37,7 +37,7 @@ function parseFunctionBody(
         // if (funCache.has(paramsKey)) {
         //     funCache.get(paramsKey)?.add(attrName, type);
         // }
-        console.log(paramsKey, attrName, 'paramsKey');
+        // console.log(paramsKey, attrName, 'paramsKey');
         
     });
 
@@ -119,15 +119,26 @@ function parseFunctionBody(
             if (left.getKind() === SyntaxKind.PropertyAccessExpression) {
                 const propAccess = left.asKindOrThrow(SyntaxKind.PropertyAccessExpression);
                 const paramKey = propAccess.getExpression().getText();
-
-                // if (!funCache.has(paramKey)) return;
-                // const iParamSet = funCache.get(paramKey)!;
                 const propName = propAccess.getName();
                 // 利用右侧表达式获取类型信息
-                const rightType = right.getType().getBaseTypeOfLiteralType().getText();
-                // console.log(paramKey, propName, rightType, 'ccccccccccccccccccccccccccccc');
                 
-                // iParamSet.update(propName, rightType);
+                
+                const localVar = scope.find(paramKey);
+                if (localVar) {
+                    let rhsType;
+                    if (Node.isIdentifier(right)) {
+                        const rhsName = right.getText();
+                        rhsType = scope.find(rhsName);
+                    } else {
+                        const aliasType = right.getType().getBaseTypeOfLiteralType();
+                        rhsType = createVariable(aliasType);
+                    }
+                    localVar.combine(
+                        createVariable(new ObjectType({
+                            [propName]: rhsType!
+                        }))
+                    )
+                }
             }
         }
     }
@@ -185,9 +196,9 @@ const {
     aaa = 4444;
     var ww = [];
         props.data = 1;
-        props.t.q.w.e = 1;
+        // props.t.q.w.e = 1;
         props.name = "123";
-        props.list = [1,2,3];
+        props.list = [1,2,3, "1"];
         data.name = 1;
         age.kk = 123;
         props.ll.forEach(item => {
