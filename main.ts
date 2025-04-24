@@ -95,7 +95,6 @@ function parseFunctionBody(
             const init = varDecl.getInitializerOrThrow();
             let rhsType;
             
-            
             if (Node.isIdentifier(init)) {
                 const rhsName = init.getText();
                 rhsType = scope.find(rhsName);
@@ -122,17 +121,16 @@ function parseFunctionBody(
 
             if (left.getKind() === SyntaxKind.PropertyAccessExpression) {
                 const propAccess = left.asKindOrThrow(SyntaxKind.PropertyAccessExpression);
-                const paramKey = propAccess.getExpression().getText();
                 const propName = propAccess.getName();
                 // 利用右侧表达式获取类型信息
-                
-                
-                const localVar = scope.find(paramKey);
+                const localVar = getVariablePropertyValue(scope, getPropertyAccessList(propAccess));
                 if (localVar) {
                     let rhsType;
                     if (Node.isIdentifier(right)) {
                         const rhsName = right.getText();
                         rhsType = scope.find(rhsName);
+                    } else if (Node.isPropertyAccessExpression(right)) {
+                        rhsType = getVariablePropertyValue(scope, getPropertyAccessList(right));
                     } else {
                         const aliasType = right.getType().getBaseTypeOfLiteralType();
                         rhsType = createVariable(aliasType);
@@ -188,7 +186,7 @@ const {
     function dd(props) {
     const { a,b = '123',c = "2134234234" } = props;
     const { t1 } = a;
-    const { g = [1,2,3] } = t1;
+    const { g = [1,2,3], a } = t1;
     let aaa = 123;
     const w = {
         ww: 123,
@@ -197,7 +195,8 @@ const {
             c: props
         }
     };
-    w.a = props;
+    props.a.t1.a = w;
+    w.a = props.a.t1.g;
     let y = props.a.t1.g;
     aaa = 4444;
     var ww = [];

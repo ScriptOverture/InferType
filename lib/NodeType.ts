@@ -255,8 +255,9 @@ export function createScope(
 
     Promise.resolve().then(_ => {
         console.log(
+            '<<<<',
             // paramsMap['props']?.currentType?.toString(),
-            localVariables['y']?.currentType?.toString(),
+            localVariables['w']?.currentType?.toString(),
             '>>>>'
         );
     })
