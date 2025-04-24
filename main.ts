@@ -1,5 +1,5 @@
 import { ArrowFunction, FunctionDeclaration, FunctionExpression, Node, Project, SyntaxKind, ts } from "ts-morph";
-import { convertTypeNode, getPropertyAccessList, getVariablePropertyValue } from './utils';
+import { getPropertyAccessList, getPropertyAssignmentType, getVariablePropertyValue } from './utils';
 import { createScope, createVariable, ObjectType } from "./lib/NodeType";
 
 
@@ -19,11 +19,11 @@ function parseFunctionBody(
         // if (attrName === 'forEach') {
         //     let callExpr = expr.getParentIfKindOrThrow(SyntaxKind.CallExpression);
         //     const cb = callExpr.getArguments()[0];
-    
+
         //     if (!Node.isArrowFunction(cb) && !Node.isFunctionExpression(cb)) {
         //         throw new Error("forEach 的参数不是函数！");
         //     }
-    
+
         //     if (Node.isPropertyAccessExpression(llAccess)) {
         //         const cbMap = Demo(cb).attributeData?.getOriginMap();
         //         attrName = llAccess.getName();
@@ -31,14 +31,14 @@ function parseFunctionBody(
         //         const params = cb.getParameters()[0]?.getName();
         //         type = cbMap.get(params!);
         //     }
-    
+
         // }
-    
+
         // if (funCache.has(paramsKey)) {
         //     funCache.get(paramsKey)?.add(attrName, type);
         // }
         // console.log(paramsKey, attrName, 'paramsKey');
-        
+
     });
 
     function getFunction() {
@@ -72,43 +72,37 @@ function parseFunctionBody(
         const varDecl = node.asKindOrThrow(SyntaxKind.VariableDeclaration);
         const initializer = varDecl.getInitializer();
         const paramKey = initializer?.getText()!;
-
         const nameNode = varDecl.getNameNode();
-        // 对象解构：例如 const { name, data } = props;
-        if (nameNode.getKind() === SyntaxKind.ObjectBindingPattern) {
-            const bindingPattern = nameNode.asKindOrThrow(SyntaxKind.ObjectBindingPattern);
 
-            const obj = bindingPattern.getElements().reduce((result, elem) => {
-                const propName = elem.getPropertyNameNode()?.getText() || elem.getName();
-                const initializer = elem.getInitializer();
-                const iType = initializer?.getType()?.getBaseTypeOfLiteralType();
-                return {
-                    ...result,
-                    [propName]: createVariable(iType!)
+        switch (nameNode.getKind()) {
+            // 对象解构：例如 const { name, data } = props;
+            case SyntaxKind.ArrayBindingPattern:
+                const bindingPattern = nameNode.asKindOrThrow(SyntaxKind.ObjectBindingPattern);
+                const obj = bindingPattern.getElements().reduce((result, elem) => {
+                    const propName = elem.getPropertyNameNode()?.getText() || elem.getName();
+                    const initializer = elem.getInitializer();
+                    const iType = initializer?.getType()?.getBaseTypeOfLiteralType();
+                    return {
+                        ...result,
+                        [propName]: createVariable(iType!)
+                    }
+                }, {})
+
+                scope.findParameter(paramKey)?.creatDestructured(obj);
+                break;
+            // 简单别名赋值：例如 const copyProps = props;
+            case SyntaxKind.Identifier:
+                const init = varDecl.getInitializerOrThrow();
+                let rhsType = getPropertyAssignmentType(scope, init);
+                if (!rhsType) {
+                    rhsType = createVariable(varDecl.getType());
                 }
-            }, {})
-            
-            scope.findParameter(paramKey)?.creatDestructured(obj);
-        }
-        // 简单别名赋值：例如 const copyProps = props;
-        else if (nameNode.getKind() === SyntaxKind.Identifier) {
-            const init = varDecl.getInitializerOrThrow();
-            let rhsType;
-            
-            if (Node.isIdentifier(init)) {
-                const rhsName = init.getText();
-                rhsType = scope.find(rhsName);
-            } if (Node.isPropertyAccessExpression(init)) {
-                rhsType = getVariablePropertyValue(scope, getPropertyAccessList(init));
-            } else {
-                const aliasType = varDecl.getType();
-                rhsType = createVariable(aliasType);
-            }
-            
-            scope.createLocalVariable(
-                nameNode.getText(),
-                rhsType!
-            );
+
+                scope.createLocalVariable(
+                    nameNode.getText(),
+                    rhsType!
+                );
+                break;
         }
     }
 
@@ -125,13 +119,8 @@ function parseFunctionBody(
                 // 利用右侧表达式获取类型信息
                 const localVar = getVariablePropertyValue(scope, getPropertyAccessList(propAccess));
                 if (localVar) {
-                    let rhsType;
-                    if (Node.isIdentifier(right)) {
-                        const rhsName = right.getText();
-                        rhsType = scope.find(rhsName);
-                    } else if (Node.isPropertyAccessExpression(right)) {
-                        rhsType = getVariablePropertyValue(scope, getPropertyAccessList(right));
-                    } else {
+                    let rhsType = getPropertyAssignmentType(scope, right);
+                    if (!rhsType) {
                         const aliasType = right.getType().getBaseTypeOfLiteralType();
                         rhsType = createVariable(aliasType);
                     }

@@ -159,16 +159,16 @@ function convertArrayType(iType: Type<ts.Type>): ArrayType {
 
 
 
-export function getPropertyAccessList(expr: PropertyAccessExpression<ts.PropertyAccessExpression>) {
+export function getPropertyAccessList(expr: PropertyAccessExpression) {
     const result = [];
-    let next = expr;
+    let next: Node = expr;
     while (Node.isPropertyAccessExpression(next)) {
         const attrKey = next.getName();
         result.unshift(attrKey);
         next = next.getExpression();
     }
     if (Node.isIdentifier(next)) {
-        result.unshift(next?.getText());
+        result.unshift(next.getText());
     }
 
     return result;
@@ -189,4 +189,23 @@ export function getVariablePropertyValue(scope: Scope, propertyAccess: string[])
     }
 
     return next;
+}
+
+
+/**
+ * 右侧赋值不同情况
+ * @param scope 
+ * @param iType 
+ * @returns 
+ */
+export function getPropertyAssignmentType(scope: Scope, iType: Expression<ts.Expression>): Variable | undefined {
+    let result; // rhsType
+    if (Node.isIdentifier(iType)) {
+        const rhsName = iType.getText();
+        result = scope.find(rhsName);
+    } if (Node.isPropertyAccessExpression(iType)) {
+        result = getVariablePropertyValue(scope, getPropertyAccessList(iType));
+    } 
+
+    return result;
 }
