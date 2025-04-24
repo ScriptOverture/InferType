@@ -176,7 +176,7 @@ export type Variable = {
     ref: VariableTypeRef,
     currentType: BaseType,
     setTypeRef: (ref: BaseType) => void,
-    get: (key: string) => BaseType | undefined,
+    get: (key: string) => Variable | undefined,
     combine: (data: Variable) => Variable;
     toString: () => string
 }
@@ -228,7 +228,7 @@ export function createVariable(iType: VariableTypeRef | MorphType<ts.Type> | Bas
 import type { ParameterDeclaration, Type as MorphType, ts } from 'ts-morph';
 import { getAllParametersType, convertTypeNode } from '../utils/index';
 
-type Scope = {
+export type Scope = {
     find(name: string): Variable | undefined;
     createLocalVariable(name: string, iType: BaseType): void;
     findParameter(paramName: string): TargetParamter | null;
@@ -255,7 +255,8 @@ export function createScope(
 
     Promise.resolve().then(_ => {
         console.log(
-            paramsMap['props']?.currentType?.toString(), 
+            // paramsMap['props']?.currentType?.toString(),
+            localVariables['y']?.currentType?.toString(),
             '>>>>'
         );
     })

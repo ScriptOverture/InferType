@@ -1,5 +1,5 @@
 import { ArrowFunction, FunctionDeclaration, FunctionExpression, Node, Project, SyntaxKind, ts } from "ts-morph";
-import { convertTypeNode } from './utils';
+import { convertTypeNode, getPropertyAccessList, getVariablePropertyValue } from './utils';
 import { createScope, createVariable, ObjectType } from "./lib/NodeType";
 
 
@@ -94,9 +94,13 @@ function parseFunctionBody(
         else if (nameNode.getKind() === SyntaxKind.Identifier) {
             const init = varDecl.getInitializerOrThrow();
             let rhsType;
+            
+            
             if (Node.isIdentifier(init)) {
                 const rhsName = init.getText();
                 rhsType = scope.find(rhsName);
+            } if (Node.isPropertyAccessExpression(init)) {
+                rhsType = getVariablePropertyValue(scope, getPropertyAccessList(init));
             } else {
                 const aliasType = varDecl.getType();
                 rhsType = createVariable(aliasType);
@@ -183,6 +187,8 @@ const {
     };
     function dd(props) {
     const { a,b = '123',c = "2134234234" } = props;
+    const { t1 } = a;
+    const { g = [1,2,3] } = t1;
     let aaa = 123;
     const w = {
         ww: 123,
@@ -192,7 +198,7 @@ const {
         }
     };
     w.a = props;
-    let y = props;
+    let y = props.a.t1.g;
     aaa = 4444;
     var ww = [];
         props.data = 1;

@@ -1,5 +1,13 @@
-import {Expression, Identifier, Node, ParameterDeclaration, ts, Type} from "ts-morph";
-import {AnyType, BooleanType, NumberType, StringType, ObjectType, UnionType, type BaseType, BasicType, createVariable, type Variable, ArrayType} from "../lib/NodeType.ts";
+import {
+    Expression,
+    Identifier,
+    Node,
+    ParameterDeclaration,
+    ts,
+    Type,
+    PropertyAccessExpression,
+} from "ts-morph";
+import { type Scope, AnyType, BooleanType, NumberType, StringType, ObjectType, UnionType, type BaseType, BasicType, createVariable, type Variable, ArrayType } from "../lib/NodeType.ts";
 import TypeFlags = ts.TypeFlags;
 
 export enum ParamsKind {
@@ -147,4 +155,38 @@ function convertUnionType(iType: Type<ts.Type>): UnionType {
 function convertArrayType(iType: Type<ts.Type>): ArrayType {
     const lhsType = convertTypeNode(iType.getArrayElementTypeOrThrow());
     return new ArrayType(lhsType);
+}
+
+
+
+export function getPropertyAccessList(expr: PropertyAccessExpression<ts.PropertyAccessExpression>) {
+    const result = [];
+    let next = expr;
+    while (Node.isPropertyAccessExpression(next)) {
+        const attrKey = next.getName();
+        result.unshift(attrKey);
+        next = next.getExpression();
+    }
+    if (Node.isIdentifier(next)) {
+        result.unshift(next?.getText());
+    }
+
+    return result;
+}
+
+
+
+export function getVariablePropertyValue(scope: Scope, propertyAccess: string[]): Variable | undefined {
+    const root = propertyAccess[0];
+    const rootVariable = scope.find(root!);
+    if (propertyAccess.length === 1) {
+        return rootVariable;
+    }
+    let index = 1, next = rootVariable;
+    while (index < propertyAccess.length) {
+        next = next?.get(propertyAccess[index]!);
+        index += 1;
+    }
+
+    return next;
 }
