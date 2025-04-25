@@ -182,14 +182,27 @@ export function getVariablePropertyValue(scope: Scope, propertyAccess: string[])
     if (propertyAccess.length === 1) {
         return rootVariable;
     }
-    let index = 1, next = rootVariable;
+    let index = 1, next = rootVariable!;
     while (index < propertyAccess.length) {
-        next = next?.get(propertyAccess[index]!);
+        const attrKey = propertyAccess[index]!;
+        const current = next?.get(attrKey);
+        if (!current) {
+            const attrKeyType = createVariable();
+            next.combine(createVariable(new ObjectType({
+                [attrKey]: attrKeyType
+            })));
+            
+            next = attrKeyType;
+        } else {
+            next = current;
+        }
         index += 1;
     }
 
     return next;
 }
+
+
 
 
 /**

@@ -110,7 +110,7 @@ export class ObjectType extends Type {
         return `{ ${props} }`;
     }
 
-    combine(other: Type): Type {
+    combine(other: Type | Variable): Type {
         if (other instanceof AnyType) return this;
         if (other instanceof ObjectType) {
             for (let k in other.properties) {
@@ -189,7 +189,7 @@ function isVariableTypeRef(data: any): data is VariableTypeRef {
     return data && data.current;
 }
 
-export function createVariable(iType: VariableTypeRef | MorphType<ts.Type> | BaseType): Variable {
+export function createVariable(iType: VariableTypeRef | MorphType<ts.Type> | BaseType = new AnyType()): Variable {
     let typeRef;
     if (isVariableTypeRef(iType)) {
         typeRef = iType;
@@ -232,11 +232,12 @@ export type Scope = {
     find(name: string): Variable | undefined;
     createLocalVariable(name: string, iType: BaseType): void;
     findParameter(paramName: string): TargetParamter | null;
-    paramsMap: Record<string, Variable>
+    paramsMap: Record<string, Variable>,
+    creatDestructured: (targetVariable: Variable, recordType: Record<string, Variable>) => void
 };
 
 type TargetParamter = {
-    creatDestructured: (recordType: Record<string, BaseType>) => void
+    creatDestructured: (recordType: Record<string, Variable>) => void
 };
 
 export function createScope(
@@ -250,17 +251,33 @@ export function createScope(
         find,
         createLocalVariable,
         findParameter,
-        paramsMap
+        paramsMap,
+        creatDestructured
     }
 
     Promise.resolve().then(_ => {
         console.log(
             '<<<<',
-            // paramsMap['props']?.currentType?.toString(),
+            paramsMap['props']?.currentType?.toString(),
             localVariables['w']?.currentType?.toString(),
             '>>>>'
         );
     })
+
+    function creatDestructured(targetVariable: Variable, recordType: Record<string, Variable>) {
+        const variable = createVariable(new ObjectType(recordType));
+        targetVariable.combine(variable);
+        
+        for (const k in recordType) {
+            if (localVariables.hasOwnProperty(k)) {
+                // 有 同步bug
+                localVariables[k] = localVariables[k]?.combine(variable.get(k)!)!
+            } else {
+                localVariables[k] = variable.get(k)!;
+            }
+        }
+    }
+
     function findParameter(paramName: string) {
         const targetType = find(paramName);
         if (!targetType) return null;
@@ -270,18 +287,8 @@ export function createScope(
             targetType.setTypeRef(new ObjectType({}))
         }
         return {
-            creatDestructured(recordType: Record<string, BaseType>) {
-                const variable = createVariable(new ObjectType(recordType));
-                targetType.combine(variable);
-                
-                for (const k in recordType) {
-                    if (localVariables.hasOwnProperty(k)) {
-                        // 有 同步bug
-                        localVariables[k] = localVariables[k]?.combine(variable.get(k)!)!
-                    } else {
-                        localVariables[k] = variable.get(k)!;
-                    }
-                }
+            creatDestructured(recordType: Record<string, Variable>) {
+                creatDestructured(targetType, recordType);
             }
         }
     }

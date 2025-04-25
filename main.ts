@@ -73,10 +73,10 @@ function parseFunctionBody(
         const initializer = varDecl.getInitializer();
         const paramKey = initializer?.getText()!;
         const nameNode = varDecl.getNameNode();
-
+        
         switch (nameNode.getKind()) {
             // 对象解构：例如 const { name, data } = props;
-            case SyntaxKind.ArrayBindingPattern:
+            case SyntaxKind.ObjectBindingPattern: {
                 const bindingPattern = nameNode.asKindOrThrow(SyntaxKind.ObjectBindingPattern);
                 const obj = bindingPattern.getElements().reduce((result, elem) => {
                     const propName = elem.getPropertyNameNode()?.getText() || elem.getName();
@@ -87,13 +87,18 @@ function parseFunctionBody(
                         [propName]: createVariable(iType!)
                     }
                 }, {})
-
-                scope.findParameter(paramKey)?.creatDestructured(obj);
+                const initializer = varDecl.getInitializerOrThrow();
+                const rhsType = getPropertyAssignmentType(scope, initializer);
+                scope.creatDestructured(
+                    rhsType!,
+                    obj
+                );
+            }
                 break;
             // 简单别名赋值：例如 const copyProps = props;
             case SyntaxKind.Identifier:
-                const init = varDecl.getInitializerOrThrow();
-                let rhsType = getPropertyAssignmentType(scope, init);
+                const initializer = varDecl.getInitializerOrThrow();
+                let rhsType = getPropertyAssignmentType(scope, initializer);
                 if (!rhsType) {
                     rhsType = createVariable(varDecl.getType());
                 }
@@ -173,34 +178,34 @@ const {
         age: boolean
     };
     function dd(props) {
-    const { a,b = '123',c = "2134234234" } = props;
-    const { t1 } = a;
-    const { g = [1,2,3], a } = t1;
-    let aaa = 123;
-    const w = {
-        ww: 123,
-        rr: aaa,
-        ee: {
-            c: props
-        }
-    };
-    props.a.t1.a = w;
-    w.a = props.a.t1.g;
-    let y = props.a.t1.g;
-    aaa = 4444;
-    var ww = [];
-        props.data = 1;
-        // props.t.q.w.e = 1;
-        props.name = "123";
-        props.list = [1,2,3, "1"];
-        data.name = 1;
-        age.kk = 123;
-        props.ll.forEach(item => {
-            item.n = 1;
-            item.a = 'asd';
-            item.l = [1,2,3];
-        })
-        props.jk.map(item => ({...item, a: item.a, b: item.b}))
+    // const { a,b = '123',c = "2134234234" } = props;
+    const { t1 } = props.h.a;
+    // const { g = [1,2,3], a } = t1;
+    // let aaa = 123;
+    // const w = {
+    //     ww: 123,
+    //     rr: aaa,
+    //     ee: {
+    //         c: props
+    //     }
+    // };
+    // props.a.t1.a = w;
+    // w.a = props.a.t1.g;
+    // let y = props.a.t1.g;
+    // aaa = 4444;
+    // var ww = [];
+    //     props.data = 1;
+    //     // props.t.q.w.e = 1;
+    //     props.name = "123";
+    //     props.list = [1,2,3, "1"];
+    //     data.name = 1;
+    //     age.kk = 123;
+    //     props.ll.forEach(item => {
+    //         item.n = 1;
+    //         item.a = 'asd';
+    //         item.l = [1,2,3];
+    //     })
+    //     props.jk.map(item => ({...item, a: item.a, b: item.b}))
     }
     `, 'dd');
 
