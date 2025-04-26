@@ -1,6 +1,6 @@
 import { ArrowFunction, FunctionDeclaration, FunctionExpression, Node, Project, SyntaxKind, ts } from "ts-morph";
 import { getPropertyAccessList, getPropertyAssignmentType, getVariablePropertyValue } from './utils';
-import { createScope, createVariable, ObjectType } from "./lib/NodeType";
+import { ArrayType, createScope, createVariable, ObjectType } from "./lib/NodeType";
 
 
 
@@ -59,13 +59,19 @@ function parseFunctionBody(
             case SyntaxKind.BinaryExpression:
                 toBinaryExpression(node);
                 break;
+            case SyntaxKind.CallExpression:
+                toCallExpression(node);
+                break;
             default: { };
         }
     });
 
     return {
         ...params,
-        attributeData: {}
+        attributeData: {},
+        getParams: () => {
+            return scope.paramsMap
+        }
     };
 
     function toVariableDeclaration(node: Node<ts.Node>) {
@@ -73,7 +79,7 @@ function parseFunctionBody(
         const initializer = varDecl.getInitializer();
         const paramKey = initializer?.getText()!;
         const nameNode = varDecl.getNameNode();
-        
+
         switch (nameNode.getKind()) {
             // 对象解构：例如 const { name, data } = props;
             case SyntaxKind.ObjectBindingPattern: {
@@ -120,7 +126,7 @@ function parseFunctionBody(
 
             if (left.getKind() === SyntaxKind.PropertyAccessExpression) {
                 const propAccess = left.asKindOrThrow(SyntaxKind.PropertyAccessExpression);
-                const propName = propAccess.getName();
+                // const propName = propAccess.getName();
                 // 利用右侧表达式获取类型信息
                 const localVar = getVariablePropertyValue(scope, getPropertyAccessList(propAccess));
                 if (localVar) {
@@ -129,14 +135,44 @@ function parseFunctionBody(
                         const aliasType = right.getType().getBaseTypeOfLiteralType();
                         rhsType = createVariable(aliasType);
                     }
-                    localVar.combine(
-                        createVariable(new ObjectType({
-                            [propName]: rhsType!
-                        }))
-                    )
+                    // localVar.combine(
+                    //     createVariable(new ObjectType({
+                    //         [propName]: rhsType!
+                    //     }))
+                    // )
+                    localVar.combine(rhsType)
                 }
             }
         }
+    }
+
+
+    function toCallExpression(node: Node<ts.Node>) {
+        const callExpression = node.asKindOrThrow(SyntaxKind.CallExpression);
+        const propertyAccessExpression = callExpression.getExpression();
+        const methodName = propertyAccessExpression.getName();
+
+        switch (methodName) {
+            case "map":
+            case "forEach":
+                const firstArrowFunction = callExpression.getArguments().at(0)?.asKindOrThrow(SyntaxKind.ArrowFunction);
+                if (firstArrowFunction) {
+                    const firstParamName = firstArrowFunction.getParameters()[0]?.getName();
+                    const funParamsType = parseFunctionBody(firstArrowFunction, scope)?.getParams();
+                    const arrowFunctionPropsType = funParamsType[firstParamName!];
+
+                    getVariablePropertyValue(
+                        scope,
+                        getPropertyAccessList(propertyAccessExpression.getExpression())
+                    )?.combine(
+                        createVariable(
+                            new ArrayType(arrowFunctionPropsType?.currentType)
+                        )
+                    )
+                }
+                break
+        }
+
     }
 }
 
@@ -179,7 +215,7 @@ const {
     };
     function dd(props) {
     // const { a,b = '123',c = "2134234234" } = props;
-    const { t1 } = props.h.a;
+    // const { t1 } = props.h.a;
     // const { g = [1,2,3], a } = t1;
     // let aaa = 123;
     // const w = {
@@ -205,7 +241,12 @@ const {
     //         item.a = 'asd';
     //         item.l = [1,2,3];
     //     })
-    //     props.jk.map(item => ({...item, a: item.a, b: item.b}))
+        props.jk.map(item => {
+            return {
+                name: item.name,
+                jk: item.jk
+            };
+        })
     }
     `, 'dd');
 

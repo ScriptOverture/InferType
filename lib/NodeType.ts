@@ -105,7 +105,6 @@ export class ObjectType extends Type {
         const props = Object.entries(this.properties)
             .map(([k, v]) => `${k}: ${v}`)
             .join(', ');
-            console.log(props);
             
         return `{ ${props} }`;
     }
@@ -156,18 +155,6 @@ export class UnionType extends Type {
             }
             return acc;
         }, []);
-    }
-}
-
-export class DynamicType {
-    private currentType: Type = new AnyType();
-
-    addType(newType: Type): void {
-        this.currentType = this.currentType.combine(newType);
-    }
-
-    getType(): string {
-        return this.currentType.toString();
     }
 }
 
@@ -259,7 +246,6 @@ export function createScope(
         console.log(
             '<<<<',
             paramsMap['props']?.currentType?.toString(),
-            localVariables['w']?.currentType?.toString(),
             '>>>>'
         );
     })

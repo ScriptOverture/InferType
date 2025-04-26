@@ -60,41 +60,6 @@ export function getAllParametersType(parasms: ParameterDeclaration[]): Parameter
             parasmsList: newRes.parasmsList.concat(result)
         };
     }, result);
-    //  parasms.map((paramsItem, index) => {
-    //     const nameNode = paramsItem.getNameNode();
-    //     const paramKey = paramsItem.getName();
-    //     const paramType = paramsItem.getType();
-    //     let result: Parameters = {
-    //         index,
-    //         kind: ParamsKind.Required,
-    //         paramName: paramKey,
-    //         paramType: convertTypeNode(paramType)
-    //     };
-    //     // 参数是否解构
-    //     if (Node.isObjectBindingPattern(nameNode)) {
-    //         const {params} = nameNode.getElements().reduce<{
-    //             params: string[];
-    //         }>((results, item) => {
-    //             const localName = item.getName();
-    //             const originalName = item.getPropertyNameNode()?.getText() || localName;
-    //             const propSymbol = paramType.getProperty(originalName);
-    //             const itype = propSymbol?.getTypeAtLocation(item);
-    //             // if (!paramsItem.getTypeNode() && itype) {
-    //             //     result.paramType.addType(originalName, new TsMorphTypeConverter().convertType(itype));
-    //             // }
-    //             return {
-    //                 params: results.params.concat(originalName),
-    //             }
-    //         }, {params: []});
-
-    //         result = {
-    //             ...result,
-    //             kind: ParamsKind.Destructured,
-    //             paramName: params,
-    //         };
-    //     }
-    //     return result;
-    // })
 }
 
 
@@ -183,7 +148,7 @@ export function getVariablePropertyValue(scope: Scope, propertyAccess: string[])
         return rootVariable;
     }
     let index = 1, next = rootVariable!;
-    while (index < propertyAccess.length) {
+    while (index < propertyAccess.length && next) {
         const attrKey = propertyAccess[index]!;
         const current = next?.get(attrKey);
         if (!current) {
@@ -198,7 +163,6 @@ export function getVariablePropertyValue(scope: Scope, propertyAccess: string[])
         }
         index += 1;
     }
-
     return next;
 }
 
