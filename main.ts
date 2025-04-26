@@ -1,6 +1,6 @@
 import { ArrowFunction, FunctionDeclaration, FunctionExpression, Node, Project, SyntaxKind, ts } from "ts-morph";
-import { getPropertyAccessList, getPropertyAssignmentType, getVariablePropertyValue } from './utils';
-import { ArrayType, createScope, createVariable, ObjectType } from "./lib/NodeType";
+import { getPropertyAccessList, getPropertyAssignmentType, getVariablePropertyValue, createRef } from './utils';
+import { ArrayType, createScope, createVariable, ObjectType, type Variable } from "./lib/NodeType";
 
 
 
@@ -9,42 +9,14 @@ function parseFunctionBody(
     scopePrototype: any = {}
 ) {
     const iFunction = funNode as unknown as FunctionExpression | ArrowFunction | FunctionDeclaration;
-    const { params, body, propertyAccesses } = getFunction();
+    const { params, body, returnStatement } = getFunction();
     const scope = createScope(params, {}, scopePrototype);
-    propertyAccesses?.forEach(expr => {
-        const llAccess = expr.getExpression();
-        let paramsKey = llAccess.getText();
-        let attrName = expr.getName();
-        let type = 'any';
-        // if (attrName === 'forEach') {
-        //     let callExpr = expr.getParentIfKindOrThrow(SyntaxKind.CallExpression);
-        //     const cb = callExpr.getArguments()[0];
-
-        //     if (!Node.isArrowFunction(cb) && !Node.isFunctionExpression(cb)) {
-        //         throw new Error("forEach 的参数不是函数！");
-        //     }
-
-        //     if (Node.isPropertyAccessExpression(llAccess)) {
-        //         const cbMap = Demo(cb).attributeData?.getOriginMap();
-        //         attrName = llAccess.getName();
-        //         paramsKey = getRootIdentifier(llAccess)?.getText()!;
-        //         const params = cb.getParameters()[0]?.getName();
-        //         type = cbMap.get(params!);
-        //     }
-
-        // }
-
-        // if (funCache.has(paramsKey)) {
-        //     funCache.get(paramsKey)?.add(attrName, type);
-        // }
-        // console.log(paramsKey, attrName, 'paramsKey');
-
-    });
-
+    const [returnStatementType, setReturnStatementType] = createRef<Variable>();
     function getFunction() {
         return {
             body: iFunction!.getBody(),
             params: iFunction?.getParameters()!,
+            returnStatement: iFunction?.getBody()?.asKind(SyntaxKind.Block)?.getStatement((node) => node.getKind() === SyntaxKind.ReturnStatement),
             propertyAccesses: iFunction?.getDescendantsOfKind(SyntaxKind.PropertyAccessExpression)
         };
     }
@@ -61,7 +33,10 @@ function parseFunctionBody(
                 break;
             case SyntaxKind.CallExpression:
                 toCallExpression(node);
-                break;  
+                break;
+            case SyntaxKind.ReturnStatement:
+                toReturnStatement(node);
+                break;
             default: { };
         }
     });
@@ -69,15 +44,12 @@ function parseFunctionBody(
     return {
         ...params,
         attributeData: {},
-        getParams: () => {
-            return scope.paramsMap
-        }
+        getParamsType: () => scope.paramsMap,
+        getReturnType: () => returnStatementType.current
     };
 
     function toVariableDeclaration(node: Node<ts.Node>) {
         const varDecl = node.asKindOrThrow(SyntaxKind.VariableDeclaration);
-        const initializer = varDecl.getInitializer();
-        const paramKey = initializer?.getText()!;
         const nameNode = varDecl.getNameNode();
 
         switch (nameNode.getKind()) {
@@ -126,7 +98,6 @@ function parseFunctionBody(
 
             if (left.getKind() === SyntaxKind.PropertyAccessExpression) {
                 const propAccess = left.asKindOrThrow(SyntaxKind.PropertyAccessExpression);
-                // const propName = propAccess.getName();
                 // 利用右侧表达式获取类型信息
                 const localVar = getVariablePropertyValue(scope, getPropertyAccessList(propAccess));
                 if (localVar) {
@@ -135,11 +106,6 @@ function parseFunctionBody(
                         const aliasType = right.getType().getBaseTypeOfLiteralType();
                         rhsType = createVariable(aliasType);
                     }
-                    // localVar.combine(
-                    //     createVariable(new ObjectType({
-                    //         [propName]: rhsType!
-                    //     }))
-                    // )
                     localVar.combine(rhsType)
                 }
             }
@@ -158,7 +124,7 @@ function parseFunctionBody(
                 const firstArrowFunction = callExpression.getArguments().at(0)?.asKindOrThrow(SyntaxKind.ArrowFunction);
                 if (firstArrowFunction) {
                     const firstParamName = firstArrowFunction.getParameters()[0]?.getName();
-                    const funParamsType = parseFunctionBody(firstArrowFunction, scope)?.getParams();
+                    const funParamsType = parseFunctionBody(firstArrowFunction, scope)?.getParamsType();
                     const arrowFunctionPropsType = funParamsType[firstParamName!];
 
                     getVariablePropertyValue(
@@ -173,6 +139,14 @@ function parseFunctionBody(
                 break
         }
 
+    }
+
+    function toReturnStatement(node: Node<ts.Node>) {
+        const returnNode = node.asKindOrThrow(SyntaxKind.ReturnStatement);
+        // 是当前函数的返回语句
+        if (returnStatement === returnNode) {
+            setReturnStatementType(getPropertyAssignmentType(scope, returnNode.getExpression()!));
+        }
     }
 }
 
@@ -214,50 +188,17 @@ const {
         age: boolean
     };
     function dd(props) {
-    const res1 = {
-        a: [1, "xx"],
-        c: {
-            w: "xxx"
+        props.kl.forEach(() => {
+            return 2
+        })
+        props.a.map(() => {
+            return 1;
+        });
+        const jk = [1,2,3]
+        return {
+            data: [1, {w: 1}],
+            jh: jk
         }
-    }
-        res1.b = 123;
-        const res = {
-            cc: res1
-        }
-    // const { a,b = '123',c = "2134234234" } = props;
-    // const { t1 } = props.h.a;
-    // const { g = [1,2,3], a } = t1;
-    // let aaa = 123;
-    // const w = {
-    //     ww: 123,
-    //     rr: aaa,
-    //     ee: {
-    //         c: props
-    //     }
-    // };
-    // props.a.t1.a = w;
-    // w.a = props.a.t1.g;
-    // let y = props.a.t1.g;
-    // aaa = 4444;
-    // var ww = [];
-    //     props.data = 1;
-    //     // props.t.q.w.e = 1;
-    //     props.name = "123";
-    //     props.list = [1,2,3, "1"];
-    //     data.name = 1;
-    //     age.kk = 123;
-    //     props.ll.forEach(item => {
-    //         item.n = 1;
-    //         item.a = 'asd';
-    //         item.l = [1,2,3];
-    //     })
-        // props.jk.map(item => {
-        // const res = {
-        //         name: item.name,
-        //         jk: item.jk
-        //     }
-        //     return res;
-        // })
     }
     `, 'dd');
 

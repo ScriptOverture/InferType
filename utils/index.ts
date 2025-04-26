@@ -177,6 +177,7 @@ export function getVariablePropertyValue(scope: Scope, propertyAccess: string[])
  * @returns 
  */
 export function getPropertyAssignmentType(scope: Scope, iType: Expression): Variable | undefined {
+    if (!iType) return;
     let result;
     switch (iType.getKind()) {
         // 对象
@@ -223,4 +224,22 @@ export function getPropertyAssignmentType(scope: Scope, iType: Expression): Vari
     }
 
     return result;
+}
+
+type Ref<T> = {
+    current: T | null
+}
+type RefReturn<M> = [Ref<M>, (up: Function | any) => void]
+export function createRef<T>(defaultRef?: T): RefReturn<T> {
+    let ref: Ref<T> = {
+        current: defaultRef || null
+    };
+    return [ref, (up) => {
+        if (typeof up === 'function') {
+            ref.current = up(ref.current);
+        } else {
+            ref.current = up;
+        }
+    }]
+
 }
