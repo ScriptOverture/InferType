@@ -61,7 +61,7 @@ function parseFunctionBody(
                 break;
             case SyntaxKind.CallExpression:
                 toCallExpression(node);
-                break;
+                break;  
             default: { };
         }
     });
@@ -214,6 +214,16 @@ const {
         age: boolean
     };
     function dd(props) {
+    const res1 = {
+        a: [1, "xx"],
+        c: {
+            w: "xxx"
+        }
+    }
+        res1.b = 123;
+        const res = {
+            cc: res1
+        }
     // const { a,b = '123',c = "2134234234" } = props;
     // const { t1 } = props.h.a;
     // const { g = [1,2,3], a } = t1;
@@ -241,12 +251,13 @@ const {
     //         item.a = 'asd';
     //         item.l = [1,2,3];
     //     })
-        props.jk.map(item => {
-            return {
-                name: item.name,
-                jk: item.jk
-            };
-        })
+        // props.jk.map(item => {
+        // const res = {
+        //         name: item.name,
+        //         jk: item.jk
+        //     }
+        //     return res;
+        // })
     }
     `, 'dd');
 

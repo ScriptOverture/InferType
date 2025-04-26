@@ -246,6 +246,7 @@ export function createScope(
         console.log(
             '<<<<',
             paramsMap['props']?.currentType?.toString(),
+            localVariables['res']?.currentType.toString(),
             '>>>>'
         );
     })

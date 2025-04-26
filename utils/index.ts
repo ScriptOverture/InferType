@@ -6,6 +6,7 @@ import {
     ts,
     Type,
     PropertyAccessExpression,
+    SyntaxKind
 } from "ts-morph";
 import { type Scope, AnyType, BooleanType, NumberType, StringType, ObjectType, UnionType, type BaseType, BasicType, createVariable, type Variable, ArrayType } from "../lib/NodeType.ts";
 import TypeFlags = ts.TypeFlags;
@@ -175,14 +176,51 @@ export function getVariablePropertyValue(scope: Scope, propertyAccess: string[])
  * @param iType 
  * @returns 
  */
-export function getPropertyAssignmentType(scope: Scope, iType: Expression<ts.Expression>): Variable | undefined {
-    let result; // rhsType
-    if (Node.isIdentifier(iType)) {
-        const rhsName = iType.getText();
-        result = scope.find(rhsName);
-    } if (Node.isPropertyAccessExpression(iType)) {
-        result = getVariablePropertyValue(scope, getPropertyAccessList(iType));
-    } 
+export function getPropertyAssignmentType(scope: Scope, iType: Expression): Variable | undefined {
+    let result;
+    switch (iType.getKind()) {
+        // 对象
+        case SyntaxKind.ObjectLiteralExpression:
+            const node = iType.asKindOrThrow(SyntaxKind.ObjectLiteralExpression);
+            const newObjType: Record<string, Variable> = {};
+            for (const propertyNode of node.getProperties()) {
+                const property = propertyNode?.asKindOrThrow(SyntaxKind.PropertyAssignment)!;
+                const propertyName = property.getName();
+                const initializer = property.getInitializer();
+                newObjType[propertyName] = getPropertyAssignmentType(scope, initializer!)!;
+            }
+            result = createVariable(
+                new ObjectType(newObjType)
+            );
+            break;
+        // 变量
+        case SyntaxKind.Identifier:
+            result = scope.find(iType.getText());
+            break;
+        // 属性 k: props.x.xx.xxx
+        case SyntaxKind.PropertyAccessExpression:
+            result = getVariablePropertyValue(
+                scope, 
+                getPropertyAccessList(iType.asKindOrThrow(SyntaxKind.PropertyAccessExpression))
+            )
+            break;
+        // array
+        case SyntaxKind.ArrayLiteralExpression:
+            const arrayNode = iType.asKindOrThrow(SyntaxKind.ArrayLiteralExpression);
+            const arrayElements = arrayNode.getElements();
+            const arrayType = new Set<Variable>();
+            for (const element of arrayElements) {
+                arrayType.add(getPropertyAssignmentType(scope, element)!);
+            }
+            const itemType = new UnionType([...arrayType].map(item => item.currentType));
+            const newArrayType = new ArrayType(itemType);
+            result = createVariable(newArrayType);
+            break;
+        // 兜底推断类型
+        default:
+            result = createVariable(iType.getType().getBaseTypeOfLiteralType());
+            break;
+    }
 
     return result;
 }
