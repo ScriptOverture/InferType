@@ -3,13 +3,11 @@ import {
     Identifier,
     Node,
     ParameterDeclaration,
-    ts,
-    Type,
     PropertyAccessExpression,
     SyntaxKind
 } from "ts-morph";
-import { type Scope, AnyType, BooleanType, NumberType, StringType, ObjectType, UnionType, type BaseType, BasicType, createVariable, type Variable, ArrayType } from "../lib/NodeType.ts";
-import TypeFlags = ts.TypeFlags;
+import { type Scope, AnyType, BooleanType, NumberType, StringType, ObjectType, UnionType, createVariable, type Variable, ArrayType } from "../lib/NodeType.ts";
+
 
 export enum ParamsKind {
     // 必选参数
@@ -45,7 +43,7 @@ export function getAllParametersType(parasms: ParameterDeclaration[]): Parameter
             // 默认必填参数类型
             kind: ParamsKind.Required,
             paramName: paramKey,
-            paramType: createVariable(paramType)
+            paramType: createVariable()
         };
         // 参数是否解构
         if (Node.isObjectBindingPattern(nameNode)) {
@@ -74,53 +72,6 @@ export function getRootIdentifier(expr: Expression): Identifier | undefined {
         cur = cur.getExpression();
     }
     return Node.isIdentifier(cur) ? cur : undefined;
-}
-
-
-export function convertTypeNode(iType: Type<ts.Type>): BaseType {
-    if (!iType) return new AnyType();
-    if (iType.isString()) return new BasicType(new StringType());
-    if (iType.isNumber()) return new BasicType(new NumberType());
-    if (iType.isBoolean()) return new BasicType(new BooleanType());
-    if (iType.isUnion()) return convertUnionType(iType);
-    if (iType.isArray()) return convertArrayType(iType);
-    if (iType.isObject()) return convertObjectType(iType);
-    return new AnyType();
-}
-
-
-function convertObjectType(iType: Type<ts.Type>): ObjectType {
-    const properties: Record<string, any> = {};
-    // 处理显式属性
-    for (const property of iType.getProperties()) {
-        const name = property.getName();
-        const propertyDeclaration = property.getValueDeclaration();
-        if (propertyDeclaration) {
-            properties[name] = convertTypeNode(propertyDeclaration.getType());
-        }
-    }
-
-    // // 处理索引签名
-    // const indexSignatures = type.getIndexSignatures();
-    // if (indexSignatures.length > 0) {
-    //     const indexType = this.convertIndexSignature(indexSignatures[0]);
-    //     return new EnhancedObjectType(properties, indexType);
-    // }
-
-    return new ObjectType(properties);
-}
-
-
-function convertUnionType(iType: Type<ts.Type>): UnionType {
-    return new UnionType(
-        iType.getUnionTypes().map(t => convertTypeNode(t))
-    );
-}
-
-
-function convertArrayType(iType: Type<ts.Type>): ArrayType {
-    const lhsType = convertTypeNode(iType.getArrayElementTypeOrThrow());
-    return new ArrayType(lhsType);
 }
 
 
@@ -168,6 +119,29 @@ export function getVariablePropertyValue(scope: Scope, propertyAccess: string[])
 }
 
 
+
+function basicTypeToVariable(iType: Expression): Variable | undefined {
+    if (!iType) return;
+    let result;
+    switch (iType.getKind()) {
+        case SyntaxKind.StringLiteral:
+            result = createVariable(new StringType());
+            break;
+        case SyntaxKind.NumericLiteral:
+            result = createVariable(new NumberType());
+            break;
+        case SyntaxKind.TrueKeyword:
+            result = createVariable(new BooleanType());
+            break;
+        case SyntaxKind.FalseKeyword:
+            result = createVariable(new BooleanType());
+            break;
+        default:
+            result = createVariable(new AnyType());
+            break;
+    }
+    return result;
+}
 
 
 /**
@@ -219,12 +193,13 @@ export function getPropertyAssignmentType(scope: Scope, iType: Expression): Vari
             break;
         // 兜底推断类型
         default:
-            result = createVariable(iType.getType().getBaseTypeOfLiteralType());
+            result = basicTypeToVariable(iType);
             break;
     }
 
     return result;
 }
+
 
 export type Ref<T> = {
     current?: T

@@ -1,3 +1,5 @@
+import type { ParameterDeclaration } from 'ts-morph';
+import { getAllParametersType, createRef, isRef, type Ref, type RefReturn, isVariable } from '../utils/index';
 
 // 基础类型抽象
 abstract class Type {
@@ -45,35 +47,25 @@ export class BooleanType extends Type {
 
 export class ArrayType extends Type {
     constructor(public elementType: Type = new AnyType()) {
-      super();
+        super();
     }
-  
+
     toString() {
-      return `${this.elementType}[]`;
+        return `${this.elementType}[]`;
     }
-  
-    combine(other: Type): Type {
-      if (other instanceof AnyType) return this;
-      if (other instanceof ArrayType) {
-        return new ArrayType(this.elementType.combine(other.elementType));
-      }
-      return new UnionType([this, other]);
-    }
-  }
 
-
-export class BasicType extends Type {
-    constructor(public targetType: Type) {
-        super()
-    }
-    toString() { return this.targetType.toString(); }
     combine(other: Type): Type {
-        return other instanceof AnyType ? this.targetType : new UnionType([this.targetType, other]);
+        if (other instanceof AnyType) return this;
+        if (other instanceof ArrayType) {
+            return new ArrayType(this.elementType.combine(other.elementType));
+        }
+        return new UnionType([this, other]);
     }
 }
 
+
 // 索引类型（保持原设计）
-class IndexType extends Type {
+export class IndexType extends Type {
     constructor(
         public readonly keyType: Type,
         public readonly valueType: Type
@@ -105,7 +97,7 @@ export class ObjectType extends Type {
         const props = Object.entries(this.properties)
             .map(([k, v]) => `${k}: ${v}`)
             .join(', ');
-            
+
         return `{ ${props} }`;
     }
 
@@ -171,21 +163,19 @@ export type Variable = {
 type VariableTypeRef = Ref<BaseType>;
 
 
-export function createVariable(iType: Ref<BaseType> | MorphType<ts.Type> | BaseType = new AnyType()): Variable {
+export function createVariable(iType: Ref<BaseType> | BaseType = new AnyType()): Variable {
     const [typeRef, setTypeRef] = createRef<BaseType>();
     if (isRef(iType)) {
         setTypeRef(iType.current!);
     } else if (iType instanceof Type) {
         setTypeRef(iType);
-    } else {
-        setTypeRef(convertTypeNode(iType));
     }
     // 内联缓存预留
-    let references = new Set<VariableTypeRef>();
+    let _references = new Set<VariableTypeRef>();
 
     const self = {
         setTypeRef,
-        get ref(){ return typeRef },
+        get ref() { return typeRef },
         get currentType() { return typeRef.current },
         toString: () => typeRef.current?.toString()!,
         get: (key: string) => {
@@ -212,8 +202,6 @@ export function createVariable(iType: Ref<BaseType> | MorphType<ts.Type> | BaseT
     return self;
 }
 
-import type { ParameterDeclaration, Type as MorphType, ts } from 'ts-morph';
-import { getAllParametersType, convertTypeNode, createRef, isRef, type Ref, type RefReturn, isVariable } from '../utils/index';
 
 export type Scope = {
     find(name: string): Variable | undefined;
@@ -233,7 +221,7 @@ export function createScope(
     prototype?: Scope
 ) {
     const { paramsMap, parasmsList } = getAllParametersType(parameters);
-    
+
     const _resultSelf: Scope = {
         find,
         createLocalVariable,
@@ -246,7 +234,7 @@ export function createScope(
         console.log(
             '<<<<',
             paramsMap['props']?.currentType?.toString(),
-            localVariables['res']?.currentType?.toString(),
+            localVariables['jk']?.currentType?.toString(),
             '>>>>'
         );
     })
@@ -254,7 +242,7 @@ export function createScope(
     function creatDestructured(targetVariable: Variable, recordType: Record<string, Variable>) {
         const variable = createVariable(new ObjectType(recordType));
         targetVariable.combine(variable);
-        
+
         for (const k in recordType) {
             if (localVariables.hasOwnProperty(k)) {
                 // 有 同步bug
@@ -269,7 +257,7 @@ export function createScope(
         const targetType = find(paramName);
         if (!targetType) return null;
         const { currentType } = targetType;
-        
+
         if (!(currentType instanceof ObjectType)) {
             targetType.setTypeRef(new ObjectType({}))
         }
@@ -279,7 +267,7 @@ export function createScope(
             }
         }
     }
-    
+
     function find(name: string) {
         return localVariables[name]
             || paramsMap[name]

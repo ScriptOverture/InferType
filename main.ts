@@ -1,6 +1,6 @@
 import { ArrowFunction, FunctionDeclaration, FunctionExpression, Node, Project, SyntaxKind, ts } from "ts-morph";
 import { getPropertyAccessList, getPropertyAssignmentType, getVariablePropertyValue, createRef } from './utils';
-import { ArrayType, createScope, createVariable, ObjectType, type Variable } from "./lib/NodeType";
+import { ArrayType, createScope, createVariable, type Variable } from "./lib/NodeType";
 
 
 
@@ -56,35 +56,44 @@ function parseFunctionBody(
             // 对象解构：例如 const { name, data } = props;
             case SyntaxKind.ObjectBindingPattern: {
                 const bindingPattern = nameNode.asKindOrThrow(SyntaxKind.ObjectBindingPattern);
-                const obj = bindingPattern.getElements().reduce((result, elem) => {
-                    const propName = elem.getPropertyNameNode()?.getText() || elem.getName();
-                    const initializer = elem.getInitializer();
-                    const iType = initializer?.getType()?.getBaseTypeOfLiteralType();
-                    return {
-                        ...result,
-                        [propName]: createVariable(iType!)
-                    }
-                }, {})
                 const initializer = varDecl.getInitializerOrThrow();
-                const rhsType = getPropertyAssignmentType(scope, initializer);
-                scope.creatDestructured(
-                    rhsType!,
-                    obj
-                );
-            }
+                const rhsType = getPropertyAssignmentType(scope, initializer)!;
+                bindingPattern.getElements().forEach(elem => {
+                    const originName = elem.getName();
+                    const propName = elem.getPropertyNameNode()?.getText();
+                    const initializer = elem.getInitializer();
+                    let attrType: Variable;
+                    if (initializer) {
+                        attrType = getPropertyAssignmentType(scope, initializer)!;
+                    } else {
+                        attrType = createVariable();
+                    }
+                    // 別名
+                    if (propName) {
+                        // 更新右侧标识
+                        rhsType.combine(attrType);
+                        // 创建词法变量
+                        scope.createLocalVariable(propName, attrType);
+                    } else {
+                        // 非别名， 更新右侧标识的同时还会更新词法环境
+                        scope.creatDestructured(rhsType, {
+                            [originName]: attrType
+                        });
+                    }
+                });
                 break;
+            } 
             // 简单别名赋值：例如 const copyProps = props;
             case SyntaxKind.Identifier:
                 const initializer = varDecl.getInitializerOrThrow();
-                let rhsType = getPropertyAssignmentType(scope, initializer);
-                if (!rhsType) {
-                    rhsType = createVariable(varDecl.getType());
+                const rhsType = getPropertyAssignmentType(scope, initializer);
+                if (rhsType) {
+                    scope.createLocalVariable(
+                        nameNode.getText(),
+                        rhsType
+                    );
                 }
-
-                scope.createLocalVariable(
-                    nameNode.getText(),
-                    rhsType!
-                );
+                
                 break;
         }
     }
@@ -101,12 +110,7 @@ function parseFunctionBody(
                 // 利用右侧表达式获取类型信息
                 const localVar = getVariablePropertyValue(scope, getPropertyAccessList(propAccess));
                 if (localVar) {
-                    let rhsType = getPropertyAssignmentType(scope, right);
-                    if (!rhsType) {
-                        const aliasType = right.getType().getBaseTypeOfLiteralType();
-                        rhsType = createVariable(aliasType);
-                    }
-                    localVar.combine(rhsType)
+                    localVar.combine(getPropertyAssignmentType(scope, right)!)
                 }
             }
         }
@@ -115,9 +119,9 @@ function parseFunctionBody(
 
     function toCallExpression(node: Node<ts.Node>) {
         const callExpression = node.asKindOrThrow(SyntaxKind.CallExpression);
-        const propertyAccessExpression = callExpression.getExpression();
+        const expression  = callExpression.getExpression();
+        const propertyAccessExpression = expression.asKindOrThrow(SyntaxKind.PropertyAccessExpression);
         const methodName = propertyAccessExpression.getName();
-
         switch (methodName) {
             case "map":
             case "forEach":
@@ -129,7 +133,7 @@ function parseFunctionBody(
 
                     getVariablePropertyValue(
                         scope,
-                        getPropertyAccessList(propertyAccessExpression.getExpression())
+                        getPropertyAccessList(expression.getExpression())
                     )?.combine(
                         createVariable(
                             new ArrayType(arrowFunctionPropsType?.currentType)
@@ -145,7 +149,7 @@ function parseFunctionBody(
         const returnNode = node.asKindOrThrow(SyntaxKind.ReturnStatement);
         // 是当前函数的返回语句
         if (returnStatement === returnNode) {
-            setReturnStatementType(getPropertyAssignmentType(scope, returnNode.getExpression()!));
+            setReturnStatementType(getPropertyAssignmentType(scope, returnNode.getExpression()!)!);
         }
     }
 }
