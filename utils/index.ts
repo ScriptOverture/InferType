@@ -1,12 +1,13 @@
 import {
     Expression,
-    Identifier,
     Node,
     ParameterDeclaration,
     PropertyAccessExpression,
     SyntaxKind
 } from "ts-morph";
-import { type Scope, AnyType, BooleanType, NumberType, StringType, ObjectType, UnionType, createVariable, type Variable, ArrayType } from "../lib/NodeType.ts";
+import { AnyType, BooleanType, NumberType, StringType, ObjectType, UnionType, ArrayType } from "../lib/NodeType.ts";
+import { createVariable, type Variable } from "../lib/variable.ts";
+import type { Scope } from "../lib/scope.ts";
 
 
 export enum ParamsKind {
@@ -59,19 +60,6 @@ export function getAllParametersType(parasms: ParameterDeclaration[]): Parameter
             parasmsList: newRes.parasmsList.concat(result)
         };
     }, result);
-}
-
-
-
-
-
-
-export function getRootIdentifier(expr: Expression): Identifier | undefined {
-    let cur: Expression = expr;
-    while (Node.isPropertyAccessExpression(cur)) {
-        cur = cur.getExpression();
-    }
-    return Node.isIdentifier(cur) ? cur : undefined;
 }
 
 

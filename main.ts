@@ -1,8 +1,8 @@
 import { ArrowFunction, FunctionDeclaration, FunctionExpression, Node, Project, SyntaxKind, ts } from "ts-morph";
 import { getPropertyAccessList, getPropertyAssignmentType, getVariablePropertyValue, createRef } from './utils';
-import { ArrayType, createScope, createVariable, type Variable } from "./lib/NodeType";
-
-
+import { ArrayType } from "./lib/NodeType";
+import { createScope } from "./lib/scope";
+import { createVariable,  type Variable } from './lib/variable';
 
 function parseFunctionBody(
     funNode: FunctionExpression | ArrowFunction | FunctionDeclaration,

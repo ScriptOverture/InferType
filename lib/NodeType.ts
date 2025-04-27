@@ -1,13 +1,12 @@
-import type { ParameterDeclaration } from 'ts-morph';
-import { getAllParametersType, createRef, isRef, type Ref, type RefReturn, isVariable } from '../utils/index';
+import type { Variable } from "./variable";
 
 // 基础类型抽象
-abstract class Type {
+export abstract class BasicType {
     abstract toString(): string;
-    abstract combine(other: Type): Type;
+    abstract combine(other: BasicType): BasicType;
 }
 
-export type BaseType = Type;
+export type BaseType = BasicType;
 
 export enum AllTypes {
     Any = 'any',
@@ -17,36 +16,36 @@ export enum AllTypes {
 }
 
 // 任意类型（初始状态）
-export class AnyType extends Type {
+export class AnyType extends BasicType {
     toString() { return AllTypes.Any; }
-    combine(other: Type): Type { return other; }
+    combine(other: BasicType): BasicType { return other; }
 }
 
 // 字符串类型
-export class StringType extends Type {
+export class StringType extends BasicType {
     toString() { return AllTypes.String; }
-    combine(other: Type): Type {
+    combine(other: BasicType): BasicType {
         return other instanceof AnyType ? this : new UnionType([this, other]);
     }
 }
 
 // 字符串类型
-export class NumberType extends Type {
+export class NumberType extends BasicType {
     toString() { return AllTypes.Number; }
-    combine(other: Type): Type {
+    combine(other: BasicType): BasicType {
         return other instanceof AnyType ? this : new UnionType([this, other]);
     }
 }
 
-export class BooleanType extends Type {
+export class BooleanType extends BasicType {
     toString() { return AllTypes.Boolean; }
-    combine(other: Type): Type {
+    combine(other: BasicType): BasicType {
         return other instanceof AnyType ? this : new UnionType([this, other]);
     }
 }
 
-export class ArrayType extends Type {
-    constructor(public elementType: Type = new AnyType()) {
+export class ArrayType extends BasicType {
+    constructor(public elementType: BasicType = new AnyType()) {
         super();
     }
 
@@ -54,7 +53,7 @@ export class ArrayType extends Type {
         return `${this.elementType}[]`;
     }
 
-    combine(other: Type): Type {
+    combine(other: BasicType): BasicType {
         if (other instanceof AnyType) return this;
         if (other instanceof ArrayType) {
             return new ArrayType(this.elementType.combine(other.elementType));
@@ -65,22 +64,22 @@ export class ArrayType extends Type {
 
 
 // 索引类型（保持原设计）
-export class IndexType extends Type {
+export class IndexType extends BasicType {
     constructor(
-        public readonly keyType: Type,
-        public readonly valueType: Type
+        public readonly keyType: BasicType,
+        public readonly valueType: BasicType
     ) { super(); }
 
     toString() {
         return `{ [key: ${this.keyType}]: ${this.valueType} }`;
     }
 
-    combine(other: Type): Type {
+    combine(other: BasicType): BasicType {
         if (other instanceof AnyType) return this;
         return this.isSameType(other) ? this : new UnionType([this, other]);
     }
 
-    private isSameType(other: Type): boolean {
+    private isSameType(other: BasicType): boolean {
         return other instanceof IndexType &&
             this.keyType.toString() === other.keyType.toString() &&
             this.valueType.toString() === other.valueType.toString();
@@ -88,9 +87,9 @@ export class IndexType extends Type {
 }
 
 // 结构化对象类型（新增核心类型）
-export class ObjectType extends Type {
+export class ObjectType extends BasicType {
     constructor(
-        public readonly properties: Record<string, Type>
+        public readonly properties: Record<string, BasicType>
     ) { super(); }
 
     toString() {
@@ -101,7 +100,7 @@ export class ObjectType extends Type {
         return `{ ${props} }`;
     }
 
-    combine(other: Type | Variable): Type {
+    combine(other: BasicType | Variable): BasicType {
         if (other instanceof AnyType) return this;
         if (other instanceof ObjectType) {
             for (let k in other.properties) {
@@ -118,10 +117,10 @@ export class ObjectType extends Type {
 }
 
 // 联合类型（增强版）
-export class UnionType extends Type {
-    private types: Type[];
+export class UnionType extends BasicType {
+    private types: BasicType[];
 
-    constructor(initial: Type[]) {
+    constructor(initial: BasicType[]) {
         super();
         this.types = this.normalizeTypes(initial);
     }
@@ -130,16 +129,16 @@ export class UnionType extends Type {
         return this.types.map(t => t.toString()).join(' | ');
     }
 
-    combine(other: Type): Type {
+    combine(other: BasicType): BasicType {
         const newTypes = other instanceof UnionType
             ? [...this.types, ...other.types]
             : [...this.types, other];
         return new UnionType(newTypes);
     }
 
-    private normalizeTypes(types: Type[]): Type[] {
+    private normalizeTypes(types: BasicType[]): BasicType[] {
         const seen = new Set<string>();
-        return types.reduce<Type[]>((acc, t) => {
+        return types.reduce<BasicType[]>((acc, t) => {
             const key = t.toString();
             if (!seen.has(key) && key !== AllTypes.Any) {
                 seen.add(key);
@@ -148,135 +147,4 @@ export class UnionType extends Type {
             return acc;
         }, []);
     }
-}
-
-
-export type Variable = {
-    ref: VariableTypeRef,
-    currentType: BaseType | undefined,
-    setTypeRef: RefReturn<any>[1],
-    get: (key: string) => Variable | undefined,
-    combine: (data: Variable) => Variable;
-    toString: () => string
-}
-
-type VariableTypeRef = Ref<BaseType>;
-
-
-export function createVariable(iType: Ref<BaseType> | BaseType = new AnyType()): Variable {
-    const [typeRef, setTypeRef] = createRef<BaseType>();
-    if (isRef(iType)) {
-        setTypeRef(iType.current!);
-    } else if (iType instanceof Type) {
-        setTypeRef(iType);
-    }
-    // 内联缓存预留
-    let _references = new Set<VariableTypeRef>();
-
-    const self = {
-        setTypeRef,
-        get ref() { return typeRef },
-        get currentType() { return typeRef.current },
-        toString: () => typeRef.current?.toString()!,
-        get: (key: string) => {
-            const current = typeRef.current;
-            if (current instanceof ObjectType) {
-                const objType = current.properties[key];
-                if (isVariable(objType)) {
-                    return objType;
-                }
-                return createVariable(objType);
-            }
-        },
-        combine: (c: Variable) => {
-            const currenType = typeRef.current?.combine(c.currentType!);
-            if (isVariable(currenType)) {
-                setTypeRef(currenType);
-            } else {
-                setTypeRef(createVariable(currenType))
-            }
-            return self;
-        }
-    }
-
-    return self;
-}
-
-
-export type Scope = {
-    find(name: string): Variable | undefined;
-    createLocalVariable(name: string, iType: BaseType): void;
-    findParameter(paramName: string): TargetParamter | null;
-    paramsMap: Record<string, Variable>,
-    creatDestructured: (targetVariable: Variable, recordType: Record<string, Variable>) => void
-};
-
-type TargetParamter = {
-    creatDestructured: (recordType: Record<string, Variable>) => void
-};
-
-export function createScope(
-    parameters: ParameterDeclaration[] = [],
-    localVariables: Record<string, Variable> = {},
-    prototype?: Scope
-) {
-    const { paramsMap, parasmsList } = getAllParametersType(parameters);
-
-    const _resultSelf: Scope = {
-        find,
-        createLocalVariable,
-        findParameter,
-        paramsMap,
-        creatDestructured
-    }
-
-    Promise.resolve().then(_ => {
-        console.log(
-            '<<<<',
-            paramsMap['props']?.currentType?.toString(),
-            localVariables['jk']?.currentType?.toString(),
-            '>>>>'
-        );
-    })
-
-    function creatDestructured(targetVariable: Variable, recordType: Record<string, Variable>) {
-        const variable = createVariable(new ObjectType(recordType));
-        targetVariable.combine(variable);
-
-        for (const k in recordType) {
-            if (localVariables.hasOwnProperty(k)) {
-                // 有 同步bug
-                localVariables[k] = localVariables[k]?.combine(variable.get(k)!)!
-            } else {
-                localVariables[k] = variable.get(k)!;
-            }
-        }
-    }
-
-    function findParameter(paramName: string) {
-        const targetType = find(paramName);
-        if (!targetType) return null;
-        const { currentType } = targetType;
-
-        if (!(currentType instanceof ObjectType)) {
-            targetType.setTypeRef(new ObjectType({}))
-        }
-        return {
-            creatDestructured(recordType: Record<string, Variable>) {
-                creatDestructured(targetType, recordType);
-            }
-        }
-    }
-
-    function find(name: string) {
-        return localVariables[name]
-            || paramsMap[name]
-            || prototype?.find(name);
-    }
-
-    function createLocalVariable(name: string, variable: Variable) {
-        localVariables[name] = variable;
-    }
-
-    return _resultSelf
 }
