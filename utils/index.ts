@@ -213,7 +213,7 @@ export function getPropertyAssignmentType(scope: Scope, iType: Expression): Vari
             for (const element of arrayElements) {
                 arrayType.add(getPropertyAssignmentType(scope, element)!);
             }
-            const itemType = new UnionType([...arrayType].map(item => item.currentType));
+            const itemType = new UnionType([...arrayType].map(item => item.currentType!));
             const newArrayType = new ArrayType(itemType);
             result = createVariable(newArrayType);
             break;
@@ -226,20 +226,39 @@ export function getPropertyAssignmentType(scope: Scope, iType: Expression): Vari
     return result;
 }
 
-type Ref<T> = {
-    current: T | null
-}
-type RefReturn<M> = [Ref<M>, (up: Function | any) => void]
-export function createRef<T>(defaultRef?: T): RefReturn<T> {
-    let ref: Ref<T> = {
-        current: defaultRef || null
-    };
-    return [ref, (up) => {
-        if (typeof up === 'function') {
-            ref.current = up(ref.current);
-        } else {
-            ref.current = up;
-        }
-    }]
+export type Ref<T> = {
+    current?: T
+};
 
+type UpdateFn<M> = (prev: M) => M;
+type Update<M> = UpdateFn<M> | M;
+export type RefReturn<M> = [Ref<M>, (update: Update<M>) => void];
+
+export function createRef<T>(defaultRef?: T): RefReturn<T> {
+    const ref: Ref<T> = {
+        current: defaultRef
+    };
+
+    const setRef = (update: Update<T>) => {
+        if (isUpdater(update)) {
+            ref.current = update(ref.current) as T;
+        } else {
+            ref.current = update as T;
+        }
+    };
+
+    return [ref, setRef];
+}
+
+function isUpdater<T>(value: unknown): value is (prev: T) => T {
+    return typeof value === 'function';
+}
+
+
+export function isRef<T>(data: any): data is Ref<T> {
+    return data && data.current;
+}
+ 
+export function isVariable(data: any): data is Variable {
+    return data && data.ref && data.currentType && data.setTypeRef;
 }

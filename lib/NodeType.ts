@@ -161,51 +161,51 @@ export class UnionType extends Type {
 
 export type Variable = {
     ref: VariableTypeRef,
-    currentType: BaseType,
-    setTypeRef: (ref: BaseType) => void,
+    currentType: BaseType | undefined,
+    setTypeRef: RefReturn<any>[1],
     get: (key: string) => Variable | undefined,
     combine: (data: Variable) => Variable;
     toString: () => string
 }
 
-type VariableTypeRef = {
-    current: BaseType
-};
+type VariableTypeRef = Ref<BaseType>;
 
-function isVariableTypeRef(data: any): data is VariableTypeRef {
-    return data && data.current;
-}
 
-export function createVariable(iType: VariableTypeRef | MorphType<ts.Type> | BaseType = new AnyType()): Variable {
-    let typeRef;
-    if (isVariableTypeRef(iType)) {
-        typeRef = iType;
+export function createVariable(iType: Ref<BaseType> | MorphType<ts.Type> | BaseType = new AnyType()): Variable {
+    const [typeRef, setTypeRef] = createRef<BaseType>();
+    if (isRef(iType)) {
+        setTypeRef(iType.current!);
     } else if (iType instanceof Type) {
-        typeRef = { current: iType }
+        setTypeRef(iType);
     } else {
-        typeRef = { current: convertTypeNode(iType) };
+        setTypeRef(convertTypeNode(iType));
     }
     // 内联缓存预留
     let references = new Set<VariableTypeRef>();
 
     const self = {
+        setTypeRef,
         get ref(){ return typeRef },
         get currentType() { return typeRef.current },
-        setTypeRef(ref: BaseType) {
-            typeRef.current = ref
-        },
+        toString: () => typeRef.current?.toString()!,
         get: (key: string) => {
             const current = typeRef.current;
             if (current instanceof ObjectType) {
-                return current.properties[key]
+                const objType = current.properties[key];
+                if (isVariable(objType)) {
+                    return objType;
+                }
+                return createVariable(objType);
             }
         },
         combine: (c: Variable) => {
-            typeRef.current = typeRef.current.combine(c.currentType)
+            const currenType = typeRef.current?.combine(c.currentType!);
+            if (isVariable(currenType)) {
+                setTypeRef(currenType);
+            } else {
+                setTypeRef(createVariable(currenType))
+            }
             return self;
-        },
-        toString: () => {
-            return typeRef.current.toString()
         }
     }
 
@@ -213,7 +213,7 @@ export function createVariable(iType: VariableTypeRef | MorphType<ts.Type> | Bas
 }
 
 import type { ParameterDeclaration, Type as MorphType, ts } from 'ts-morph';
-import { getAllParametersType, convertTypeNode } from '../utils/index';
+import { getAllParametersType, convertTypeNode, createRef, isRef, type Ref, type RefReturn, isVariable } from '../utils/index';
 
 export type Scope = {
     find(name: string): Variable | undefined;
@@ -246,7 +246,7 @@ export function createScope(
         console.log(
             '<<<<',
             paramsMap['props']?.currentType?.toString(),
-            localVariables['res']?.currentType.toString(),
+            localVariables['res']?.currentType?.toString(),
             '>>>>'
         );
     })
