@@ -92,7 +92,7 @@ export class IndexType extends BasicType {
 // 结构化对象类型（新增核心类型）
 export class ObjectType extends BasicType {
     constructor(
-        public readonly properties: Record<string, BasicType>
+        public readonly properties: Record<string, BasicType> = {}
     ) { super(); }
 
     toString() {

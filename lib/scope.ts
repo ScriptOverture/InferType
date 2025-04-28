@@ -56,7 +56,7 @@ export function createScope(
             if (origin instanceof ObjectType) {
                 const { properties } = origin;
                 for (const k in properties) {
-                    localVariables[k] = getBasicTypeToVariable(properties[k]!)
+                    createLocalVariable(k, getBasicTypeToVariable(properties[k]!))
                 }
             }
         });
@@ -82,7 +82,7 @@ export function createScope(
         const { currentType } = targetType;
 
         if (!(currentType instanceof ObjectType)) {
-            targetType.setTypeRef(new ObjectType({}))
+            targetType.setTypeRef(new ObjectType())
         }
         return {
             creatDestructured(recordType: Record<string, Variable>) {

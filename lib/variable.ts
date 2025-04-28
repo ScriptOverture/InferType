@@ -7,7 +7,8 @@ import {
 import { 
     isRef, 
     createRef,
-    isVariable
+    getVariableToBasicType,
+    getBasicTypeToVariable
 } from "../utils";
 
 
@@ -41,27 +42,19 @@ export function createVariable(iType: Ref<BasicType> | BasicType = new AnyType()
         get: (key: string) => {
             const current = typeRef.current;
             if (current instanceof ObjectType) {
-                const objType: any = current.properties[key];
+                const objType = current.properties[key];
                 if (objType) {
-                    if (isVariable(objType)) {
-                        return objType;
-                    }
-                    return createVariable(objType);
+                    return getBasicTypeToVariable(objType);
                 }
             }
         },
         combine: (c: Variable | BasicType) => {
-            let currenType;
-            if (isVariable(c)) {
-                currenType = typeRef.current?.combine(c.currentType!);
-            } else {
-                currenType = typeRef.current?.combine(c);
-            }
-            if (currenType instanceof BasicType) {
-                setTypeRef(currenType!);
-            } else {
-                setTypeRef(new AnyType());
-            }
+            const currenType = typeRef.current?.combine(
+                getVariableToBasicType(c)
+            );
+            setTypeRef(
+                getVariableToBasicType(currenType!)
+            )
             return self;
         }
     }

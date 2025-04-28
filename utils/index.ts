@@ -250,3 +250,13 @@ export function getBasicTypeToVariable(data: Variable | BasicType): Variable {
     }
     return createVariable();
 }
+
+
+export function getVariableToBasicType(data: Variable | BasicType): BasicType {
+    if (isVariable(data)) {
+        return data.currentType!;
+    } else if (data instanceof BasicType) {
+        return data;
+    }
+    return new AnyType();
+}

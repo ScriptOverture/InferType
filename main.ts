@@ -192,6 +192,8 @@ const data = inferFunctionType(`
     function dd(props) {
         const cb = (params) => {
             params.data = '123';
+
+            return 1;
         }
         
     }
