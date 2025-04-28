@@ -1,12 +1,12 @@
 import { ArrowFunction, FunctionDeclaration, FunctionExpression, Node, Project, SyntaxKind, ts } from "ts-morph";
 import { getPropertyAccessList, getPropertyAssignmentType, getVariablePropertyValue, createRef } from './utils';
 import { ArrayType } from "./lib/NodeType";
-import { createScope } from "./lib/scope";
+import { createScope, type Scope } from "./lib/scope";
 import { createVariable,  type Variable } from './lib/variable';
 
 function parseFunctionBody(
     funNode: FunctionExpression | ArrowFunction | FunctionDeclaration,
-    scopePrototype: any = {}
+    scopePrototype?: Scope
 ) {
     const iFunction = funNode as unknown as FunctionExpression | ArrowFunction | FunctionDeclaration;
     const { params, body, returnStatement } = getFunction();
@@ -86,12 +86,12 @@ function parseFunctionBody(
             // 简单别名赋值：例如 const copyProps = props;
             case SyntaxKind.Identifier:
                 const initializer = varDecl.getInitializerOrThrow();
+                const newType = createVariable();
+                scope.createLocalVariable(nameNode.getText(), newType);
                 const rhsType = getPropertyAssignmentType(scope, initializer);
                 if (rhsType) {
-                    scope.createLocalVariable(
-                        nameNode.getText(),
-                        rhsType
-                    );
+                    // 循环引用
+                    newType.combine(rhsType);
                 }
                 
                 break;
@@ -160,11 +160,11 @@ export async function inferFunctionType(
 ) {
     const project = new Project();
     const sourceFile = project.createSourceFile("temp.ts", sourceStr);
-    const Global = createScope();
+    const GlobalScope = createScope();
 
     return parseFunctionBody(
         getFunction(),
-        Global
+        GlobalScope
     );
 
     function getFunction() {
@@ -182,34 +182,26 @@ export async function inferFunctionType(
 }
 
 
-const {
-    attributeData: s,
-    params
-} = inferFunctionType(`
+const data = inferFunctionType(`
     type Data = {
         data: string;
         list: number;
         age: boolean
     };
     function dd(props) {
-        props.kl.forEach(() => {
-            return 2
-        })
-        props.a.map(() => {
-            return 1;
-        });
-        const jk = [1,2,3]
-        return {
-            data: [1, {w: 1}],
-            jh: jk
+        const obj = {
+            name: [1,1,2],
+            props: props
         }
+        const jk = {
+            obj: jk,
+            o2: obj
+        }
+        
     }
     `, 'dd');
 
 
-
-// console.log(s.get('d')?.get('a'), s.get('d')?.get('b'), s.get('d')?.get('c'));
-// console.log(s.get('props')?.get('ll').get('l'), s.get('props')?.get('ll').get('a'));
 
 
 
