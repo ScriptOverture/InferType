@@ -1,10 +1,12 @@
 import type { Variable } from "./variable";
 import type { BaseType } from "./NodeType";
-import type { ParameterDeclaration } from 'ts-morph';
+import { SyntaxKind, type ParameterDeclaration } from 'ts-morph';
 import { createVariable } from "./variable"
 import { ObjectType } from "./NodeType";
 import {
-    getAllParametersType
+    getAllParametersType,
+    getBasicTypeToVariable,
+    type ParasmsItem
 } from "../utils";
 
 export type Scope = {
@@ -12,7 +14,8 @@ export type Scope = {
     createLocalVariable(name: string, iType: BaseType): void;
     findParameter(paramName: string): TargetParamter | null;
     paramsMap: Record<string, Variable>,
-    creatDestructured: (targetVariable: Variable, recordType: Record<string, Variable>) => void
+    creatDestructured: (targetVariable: Variable, recordType: Record<string, Variable>) => void,
+    getParasmsList: () => ParasmsItem[],
 };
 
 type TargetParamter = {
@@ -24,24 +27,40 @@ export function createScope(
     localVariables: Record<string, Variable> = {},
     prototype?: Scope
 ) {
-    const { paramsMap } = getAllParametersType(parameters);
+    const { paramsMap, parasmsList } = getAllParametersType(parameters);
+    initialLocalVariables();
 
     const _resultSelf: Scope = {
         find,
         createLocalVariable,
         findParameter,
         paramsMap,
-        creatDestructured
+        creatDestructured,
+        getParasmsList: () => parasmsList
     }
 
     Promise.resolve().then(_ => {
         console.log(
             '<<<<',
             paramsMap['props']?.currentType?.toString(),
-            localVariables['jk']?.currentType?.toString(),
+            localVariables['cb']?.currentType?.toString(),
             '>>>>'
         );
     })
+
+    function initialLocalVariables() {
+        parasmsList.forEach(item => {
+            if (item.kind !== SyntaxKind.ObjectBindingPattern) return;
+            // 如果是解构 需要赋值到 localVariables
+            const origin = item.paramsType.currentType!;
+            if (origin instanceof ObjectType) {
+                const { properties } = origin;
+                for (const k in properties) {
+                    localVariables[k] = getBasicTypeToVariable(properties[k]!)
+                }
+            }
+        });
+    }
 
     function creatDestructured(targetVariable: Variable, recordType: Record<string, Variable>) {
         const variable = createVariable(new ObjectType(recordType));

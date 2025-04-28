@@ -5,61 +5,66 @@ import {
     PropertyAccessExpression,
     SyntaxKind
 } from "ts-morph";
-import { AnyType, BooleanType, NumberType, StringType, ObjectType, UnionType, ArrayType } from "../lib/NodeType.ts";
+import { AnyType, BooleanType, NumberType, StringType, ObjectType, UnionType, ArrayType, BasicType, FunctionType } from "../lib/NodeType.ts";
 import { createVariable, type Variable } from "../lib/variable.ts";
 import type { Scope } from "../lib/scope.ts";
+import { parseFunctionBody } from "../main.ts"
 
 
-export enum ParamsKind {
-    // 必选参数
-    Required,
-    // 默认参数 
-    Default,
-    // 剩余参数
-    Rest,
-    // 解构参数
-    Destructured
+type Paramter = Record<string, Variable>;
+export type ParasmsItem = {
+    current: ParameterDeclaration,
+    kind: SyntaxKind,
+    paramsType: Variable,
+    paramName?: string
 };
-
-
-export type Parameters = any
 
 type ParametersResultType = {
-    paramsMap: Record<string, Variable>,
-    parasmsList: any
+    paramsMap: Paramter,
+    parasmsList: ParasmsItem[]
 };
-
 export function getAllParametersType(parasms: ParameterDeclaration[]): ParametersResultType {
-    const result = {
-        parasmsList: [],
-        paramsMap: {}
-    }
+    const parasmsList: ParasmsItem[] = Array(parasms.length)
+    const paramsMap: Paramter = {}
 
-    return parasms.reduce((newRes, paramsItem, index) => {
-        const nameNode = paramsItem.getNameNode();
-        const paramKey = paramsItem.getName();
-        const paramType = paramsItem.getType();
-        let result: Parameters = {
-            index,
-            // 默认必填参数类型
-            kind: ParamsKind.Required,
-            paramName: paramKey,
-            paramType: createVariable()
+    parasms.forEach((paramsItem, index) => {
+        const paramName = paramsItem.getName();
+        const paramNode = paramsItem.getNameNode();
+        const currentItem: ParasmsItem = {
+            current: paramsItem,
+            kind: paramNode.getKind(),
+            paramsType: createVariable()
         };
-        // 参数是否解构
-        if (Node.isObjectBindingPattern(nameNode)) {
-
+        
+        if (Node.isIdentifier(paramNode)) {
+            paramsMap[paramName] = currentItem.paramsType;
+            currentItem.paramName = paramName;
         }
+        // 参数解构 
+        else if (Node.isObjectBindingPattern(paramNode)) {
+            const elements = paramNode.getElements();
+            const paramObjs: Paramter = {}
+            elements.forEach(item => {
+                const name = item.getText();
+                paramObjs[name] = createVariable();
+            })
+            currentItem.paramsType.combine(
+                new ObjectType(paramObjs)
+            )
+        }
+        // 剩余参数
+        else if (Node.isParametered(paramNode)) {
+            const originType = new ArrayType();
+            currentItem.paramsType.combine(originType);
+            paramsMap[paramName] = currentItem.paramsType;
+        }
+        parasmsList[index] = currentItem
+    })
 
-        return {
-            ...newRes,
-            paramsMap: {
-                ...newRes.paramsMap,
-                [paramKey]: result.paramType
-            },
-            parasmsList: newRes.parasmsList.concat(result)
-        };
-    }, result);
+    return {
+        parasmsList,
+        paramsMap
+    }
 }
 
 
@@ -96,7 +101,7 @@ export function getVariablePropertyValue(scope: Scope, propertyAccess: string[])
             next.combine(createVariable(new ObjectType({
                 [attrKey]: attrKeyType
             })));
-            
+
             next = attrKeyType;
         } else {
             next = current;
@@ -163,7 +168,7 @@ export function getPropertyAssignmentType(scope: Scope, iType: Expression): Vari
         // 属性 k: props.x.xx.xxx
         case SyntaxKind.PropertyAccessExpression:
             result = getVariablePropertyValue(
-                scope, 
+                scope,
                 getPropertyAccessList(iType.asKindOrThrow(SyntaxKind.PropertyAccessExpression))
             )
             break;
@@ -178,6 +183,16 @@ export function getPropertyAssignmentType(scope: Scope, iType: Expression): Vari
             const itemType = new UnionType([...arrayType].map(item => item.currentType!));
             const newArrayType = new ArrayType(itemType);
             result = createVariable(newArrayType);
+            break;
+        // 箭头函数
+        case SyntaxKind.ArrowFunction:
+            const functionNode = iType.asKindOrThrow(SyntaxKind.ArrowFunction);
+            const inferFunctionResult = parseFunctionBody(functionNode, scope);
+            const inferFunctionType = new FunctionType(
+                inferFunctionResult.getParasmsList(),
+                inferFunctionResult.getReturnType()
+            );
+            result = createVariable(inferFunctionType);
             break;
         // 兜底推断类型
         default:
@@ -221,7 +236,17 @@ function isUpdater<T>(value: unknown): value is (prev: T) => T {
 export function isRef<T>(data: any): data is Ref<T> {
     return data && data.current;
 }
- 
+
 export function isVariable(data: any): data is Variable {
     return data && data.ref && data.currentType && data.setTypeRef;
+}
+
+
+export function getBasicTypeToVariable(data: Variable | BasicType): Variable {
+    if (isVariable(data)) {
+        return data;
+    } else if (data instanceof BasicType) {
+        return createVariable(data);
+    }
+    return createVariable();
 }

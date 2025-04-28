@@ -1,4 +1,6 @@
 import type { Variable } from "./variable";
+import { SyntaxKind } from 'ts-morph';
+import type { ParasmsItem } from "../utils";
 
 // 基础类型抽象
 export abstract class BasicType {
@@ -12,7 +14,8 @@ export enum AllTypes {
     Any = 'any',
     String = 'string',
     Boolean = 'boolean',
-    Number = 'number'
+    Number = 'number',
+    Void = 'void'
 }
 
 // 任意类型（初始状态）
@@ -146,5 +149,35 @@ export class UnionType extends BasicType {
             }
             return acc;
         }, []);
+    }
+}
+
+/**
+ * 函数类型
+ */
+export class FunctionType extends BasicType {
+    constructor(
+        private readonly paramsType: ParasmsItem[],
+        private readonly returnType?: BaseType
+    ) { super(); }
+
+    toString() {
+        const params = this.paramsType.map(item => {
+            const { kind, paramName, paramsType } = item;
+            if (kind === SyntaxKind.Identifier) {
+                return `${paramName}: ${paramsType}`;
+            } else if (kind === SyntaxKind.ObjectBindingPattern) {
+                const kv = paramsType.currentType as ObjectType;
+                return `{ ${Object.entries(kv.properties).map(([k, v]) => `${k}: ${v}`).join(', ')} }: ${paramsType}`;
+            } else if (kind === SyntaxKind.Parameter) {
+                return `...${paramsType}: ${paramsType}`;
+            }
+        }).join(', ');
+        return `(${params}) => ${this.returnType}`
+    }
+
+    combine(other: BasicType): BasicType {
+        if (other instanceof AnyType) return this;
+        return new UnionType([this, other]);
     }
 }

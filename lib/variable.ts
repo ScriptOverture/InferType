@@ -16,7 +16,7 @@ export type Variable = {
     currentType: BasicType | undefined,
     setTypeRef: RefReturn<any>[1],
     get: (key: string) => Variable | undefined,
-    combine: (data: Variable) => Variable;
+    combine: (data: Variable | BasicType) => Variable;
     toString: () => string
 }
 
@@ -50,8 +50,13 @@ export function createVariable(iType: Ref<BasicType> | BasicType = new AnyType()
                 }
             }
         },
-        combine: (c: Variable) => {
-            const currenType = typeRef.current?.combine(c.currentType!);
+        combine: (c: Variable | BasicType) => {
+            let currenType;
+            if (isVariable(c)) {
+                currenType = typeRef.current?.combine(c.currentType!);
+            } else {
+                currenType = typeRef.current?.combine(c);
+            }
             if (currenType instanceof BasicType) {
                 setTypeRef(currenType!);
             } else {

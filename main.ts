@@ -4,7 +4,7 @@ import { ArrayType } from "./lib/NodeType";
 import { createScope, type Scope } from "./lib/scope";
 import { createVariable,  type Variable } from './lib/variable';
 
-function parseFunctionBody(
+export function parseFunctionBody(
     funNode: FunctionExpression | ArrowFunction | FunctionDeclaration,
     scopePrototype?: Scope
 ) {
@@ -45,7 +45,8 @@ function parseFunctionBody(
         ...params,
         attributeData: {},
         getParamsType: () => scope.paramsMap,
-        getReturnType: () => returnStatementType.current
+        getReturnType: () => returnStatementType.current,
+        getParasmsList: () => scope.getParasmsList()
     };
 
     function toVariableDeclaration(node: Node<ts.Node>) {
@@ -189,19 +190,9 @@ const data = inferFunctionType(`
         age: boolean
     };
     function dd(props) {
-        const obj = {
-            name: [1,1,2],
-            props: props
-        }
-        const jk = {
-            obj: jk,
-            o2: obj
+        const cb = (params) => {
+            params.data = '123';
         }
         
     }
     `, 'dd');
-
-
-
-
-
