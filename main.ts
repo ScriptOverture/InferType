@@ -103,17 +103,10 @@ export function parseFunctionBody(
     function toBinaryExpression(node: Node<ts.Node>) {
         const binExp = node.asKindOrThrow(SyntaxKind.BinaryExpression);
         if (binExp.getOperatorToken().getKind() === SyntaxKind.EqualsToken) {
-            const left = binExp.getLeft();
-            const right = binExp.getRight();
+            const leftType = getPropertyAssignmentType(scope, binExp.getLeft());
+            const rightType = getPropertyAssignmentType(scope, binExp.getRight());
 
-            if (left.getKind() === SyntaxKind.PropertyAccessExpression) {
-                const propAccess = left.asKindOrThrow(SyntaxKind.PropertyAccessExpression);
-                // 利用右侧表达式获取类型信息
-                const localVar = getVariablePropertyValue(scope, getPropertyAccessList(propAccess));
-                if (localVar) {
-                    localVar.combine(getPropertyAssignmentType(scope, right)!)
-                }
-            }
+            leftType?.combine(rightType!);
         }
     }
 
@@ -177,11 +170,10 @@ const data = inferFunctionType(`
         age: boolean
     };
     function dd(props) {
-        const cb = (params) => {
-            params.data = '123';
-
-            return 1;
+        props = {
+            data: '',
+            list: [1,2,3,4],
+            age: true
         }
-        
     }
     `, 'dd');
