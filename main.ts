@@ -1,5 +1,5 @@
 import { ArrowFunction, FunctionDeclaration, FunctionExpression, Node, Project, SyntaxKind, ts } from "ts-morph";
-import { getPropertyAccessList, getPropertyAssignmentType, getVariablePropertyValue, createRef } from './utils';
+import { getPropertyAccessList, getPropertyAssignmentType, getVariablePropertyValue, createRef, getFunction } from './utils';
 import { ArrayType } from "./lib/NodeType";
 import { createScope, type Scope } from "./lib/scope";
 import { createVariable,  type Variable } from './lib/variable';
@@ -164,22 +164,9 @@ export async function inferFunctionType(
     const GlobalScope = createScope();
 
     return parseFunctionBody(
-        getFunction(),
+        getFunction(sourceFile, targetFuncName),
         GlobalScope
     );
-
-    function getFunction() {
-        let iFunction: FunctionExpression | FunctionDeclaration = sourceFile.getFunction(targetFuncName)!;
-        if (!iFunction) {
-            // 获取变量声明（即函数表达式所在的位置）
-            const variableDeclaration = sourceFile.getVariableDeclaration(targetFuncName);
-            const initializer = variableDeclaration?.getInitializer();
-            const funParams = variableDeclaration?.getInitializerIfKind(initializer?.getKind()! as SyntaxKind.FunctionExpression)!;
-            iFunction = funParams;
-        }
-
-        return iFunction;
-    }
 }
 
 

@@ -3,7 +3,10 @@ import {
     Node,
     ParameterDeclaration,
     PropertyAccessExpression,
-    SyntaxKind
+    SyntaxKind,
+    type SourceFile,
+    type FunctionExpression,
+    type FunctionDeclaration
 } from "ts-morph";
 import { AnyType, BooleanType, NumberType, StringType, ObjectType, UnionType, ArrayType, BasicType, FunctionType } from "../lib/NodeType.ts";
 import { createVariable, type Variable } from "../lib/variable.ts";
@@ -259,4 +262,18 @@ export function getVariableToBasicType(data: Variable | BasicType): BasicType {
         return data;
     }
     return new AnyType();
+}
+
+
+
+export function getFunction(sourceFile: SourceFile, targetFuncName: string) {
+    let iFunction: FunctionExpression | FunctionDeclaration = sourceFile.getFunction(targetFuncName)!;
+    if (!iFunction) {
+        // 获取变量声明（即函数表达式所在的位置）
+        const variableDeclaration = sourceFile.getVariableDeclaration(targetFuncName);
+        const initializer = variableDeclaration?.getInitializer();
+        const funParams = variableDeclaration?.getInitializerIfKind(initializer?.getKind()! as SyntaxKind.FunctionExpression)!;
+        iFunction = funParams;
+    }
+    return iFunction;
 }
