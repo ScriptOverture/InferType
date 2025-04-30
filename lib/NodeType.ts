@@ -181,3 +181,16 @@ export class FunctionType extends BasicType {
         return new UnionType([this, other]);
     }
 }
+
+
+export function isObjectType(type: BasicType): type is ObjectType {
+    return type instanceof ObjectType;
+}
+
+export function isStringType(type: BasicType): type is StringType {
+     return type instanceof StringType; 
+}
+
+export function isNumberType(type: BasicType): type is NumberType {
+    return type instanceof NumberType;
+}

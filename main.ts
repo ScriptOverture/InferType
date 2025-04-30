@@ -1,4 +1,4 @@
-import { ArrowFunction, FunctionDeclaration, FunctionExpression, Node, Project, SyntaxKind, ts } from "ts-morph";
+import { ArrowFunction, Expression, FunctionDeclaration, FunctionExpression, Node, Project, SyntaxKind, ts } from "ts-morph";
 import { getPropertyAccessList, getPropertyAssignmentType, getVariablePropertyValue, createRef, getFunction } from './utils';
 import { ArrayType } from "./lib/NodeType";
 import { createScope, type Scope } from "./lib/scope";
@@ -20,10 +20,9 @@ export function parseFunctionBody(
             propertyAccesses: iFunction?.getDescendantsOfKind(SyntaxKind.PropertyAccessExpression)
         };
     }
-
+    
     body?.forEachDescendant((node) => {
-        const lineKind = node.getKind();
-        switch (lineKind) {
+        switch (node.getKind()) {
             // 变量申明
             case SyntaxKind.VariableDeclaration:
                 toVariableDeclaration(node);
@@ -45,7 +44,7 @@ export function parseFunctionBody(
         ...params,
         attributeData: {},
         getParamsType: () => scope.paramsMap,
-        getReturnType: () => returnStatementType.current,
+        getReturnType: getFunctionReturnType,
         getParasmsList: () => scope.getParasmsList()
     };
 
@@ -146,6 +145,29 @@ export function parseFunctionBody(
             setReturnStatementType(getPropertyAssignmentType(scope, returnNode.getExpression()!)!);
         }
     }
+    
+    function getFunctionReturnType() {
+        // 箭头函数
+        if (Node.isArrowFunction(funNode)) {
+            const eqGtToken = funNode.getEqualsGreaterThan();
+            const nextNode = eqGtToken.getNextSibling()!;
+            let expressions;
+            // const fn = () => ([]);
+            if (nextNode.getKind() === SyntaxKind.ParenthesizedExpression) {
+                const expressionNode = nextNode.asKindOrThrow(SyntaxKind.ParenthesizedExpression);
+                expressions = expressionNode.getExpression();
+            }
+            // const fn = () => []
+            else {
+                expressions = nextNode as Expression;
+            }
+            return getPropertyAssignmentType(scope, expressions);
+        }
+        // 普通函数
+        else {
+            return returnStatementType.current;
+        }
+    }
 }
 
 export async function inferFunctionType(
@@ -155,7 +177,6 @@ export async function inferFunctionType(
     const project = new Project();
     const sourceFile = project.createSourceFile("temp.ts", sourceStr);
     const GlobalScope = createScope();
-
     return parseFunctionBody(
         getFunction(sourceFile, targetFuncName),
         GlobalScope
@@ -164,16 +185,19 @@ export async function inferFunctionType(
 
 
 const data = inferFunctionType(`
-    type Data = {
-        data: string;
-        list: number;
-        age: boolean
-    };
     function dd(props) {
-        props = {
-            data: '',
-            list: [1,2,3,4],
-            age: true
-        }
+        const d = () => ({
+            name: '1',
+            age: 1
+        });
     }
     `, 'dd');
+
+    function dd(props) {
+        const d = () => ({
+            name: '1',
+            age: 1
+        });
+
+        const dd = () => 1;
+    }

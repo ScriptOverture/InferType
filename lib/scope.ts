@@ -43,7 +43,7 @@ export function createScope(
         console.log(
             '<<<<',
             paramsMap['props']?.currentType?.toString(),
-            localVariables['cb']?.currentType?.toString(),
+            localVariables['d']?.currentType?.toString(),
             '>>>>'
         );
     })
