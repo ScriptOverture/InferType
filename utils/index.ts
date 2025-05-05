@@ -6,7 +6,8 @@ import {
     SyntaxKind,
     type SourceFile,
     type FunctionExpression,
-    type FunctionDeclaration
+    type FunctionDeclaration,
+    type ForEachDescendantTraversalControl
 } from "ts-morph";
 import { AnyType, BooleanType, NumberType, StringType, ObjectType, UnionType, ArrayType, BasicType, FunctionType, isBasicType } from "../lib/NodeType.ts";
 import { createVariable, type Variable } from "../lib/variable.ts";
@@ -204,6 +205,19 @@ export function getPropertyAssignmentType(scope: Scope, iType: Expression): Vari
     }
 
     return result;
+}
+
+// 推断类型
+export function getInferenceType(
+    scope: Scope, 
+    iType: Expression,
+    traversal?: ForEachDescendantTraversalControl
+): Variable | undefined  {
+    /**
+     * 推断类型时，当前解析跳过其所有子节点
+     */
+    traversal?.skip();
+    return getPropertyAssignmentType(scope, iType);
 }
 
 
