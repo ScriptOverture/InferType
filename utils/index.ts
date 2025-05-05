@@ -8,7 +8,7 @@ import {
     type FunctionExpression,
     type FunctionDeclaration
 } from "ts-morph";
-import { AnyType, BooleanType, NumberType, StringType, ObjectType, UnionType, ArrayType, BasicType, FunctionType } from "../lib/NodeType.ts";
+import { AnyType, BooleanType, NumberType, StringType, ObjectType, UnionType, ArrayType, BasicType, FunctionType, isBasicType } from "../lib/NodeType.ts";
 import { createVariable, type Variable } from "../lib/variable.ts";
 import type { Scope } from "../lib/scope.ts";
 import { parseFunctionBody } from "../main.ts"
@@ -248,7 +248,7 @@ export function isVariable(data: any): data is Variable {
 export function getBasicTypeToVariable(data: Variable | BasicType): Variable {
     if (isVariable(data)) {
         return data;
-    } else if (data instanceof BasicType) {
+    } else if (isBasicType(data)) {
         return createVariable(data);
     }
     return createVariable();
@@ -258,7 +258,7 @@ export function getBasicTypeToVariable(data: Variable | BasicType): Variable {
 export function getVariableToBasicType(data: Variable | BasicType): BasicType {
     if (isVariable(data)) {
         return data.currentType!;
-    } else if (data instanceof BasicType) {
+    } else if (isBasicType(data)) {
         return data;
     }
     return new AnyType();

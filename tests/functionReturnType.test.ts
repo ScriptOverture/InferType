@@ -54,4 +54,38 @@ describe("函数返回值", () => {
 
         expect(returnType3.currentType?.toString()).toBe("number[]");
     });
+
+
+    test("箭头函数return返回, 简单类型", () => {
+        const sourceFile = project.createSourceFile("test2.ts", `
+            const fn = () => {
+                return "1"
+            };
+            const fn1 = () => {
+                return 1
+            };
+            const fn2 = () => {
+                return [1,2,3]
+            };
+        `);
+
+        const GlobalScope = createScope();
+        const returnType = parseFunctionBody(
+            getFunction(sourceFile, "fn")!, GlobalScope
+        ).getReturnType()!;
+
+        expect(isStringType(returnType)).toBeBoolean();
+        
+        const returnType2 = parseFunctionBody(
+            getFunction(sourceFile, "fn1")!, GlobalScope
+        ).getReturnType()!;
+
+        expect(isNumberType(returnType2)).toBeBoolean();
+
+        const returnType3 = parseFunctionBody(
+            getFunction(sourceFile, "fn2")!, GlobalScope
+        ).getReturnType()!;
+
+        expect(returnType3.currentType?.toString()).toBe("number[]");
+    });
 });

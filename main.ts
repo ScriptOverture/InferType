@@ -151,13 +151,18 @@ export function parseFunctionBody(
         if (Node.isArrowFunction(funNode)) {
             const eqGtToken = funNode.getEqualsGreaterThan();
             const nextNode = eqGtToken.getNextSibling()!;
+            const nextKind = nextNode.getKind();
+            // 函数显示返回类型
+            if (nextKind === SyntaxKind.Block) {
+                return returnStatementType.current;
+            }
             let expressions;
-            // const fn = () => ([]);
-            if (nextNode.getKind() === SyntaxKind.ParenthesizedExpression) {
+            // 函数返回缩写带括号 _ => (returnType)
+            if (nextKind === SyntaxKind.ParenthesizedExpression) {
                 const expressionNode = nextNode.asKindOrThrow(SyntaxKind.ParenthesizedExpression);
                 expressions = expressionNode.getExpression();
             }
-            // const fn = () => []
+            // 函数返回缩写 _ => returnType
             else {
                 expressions = nextNode as Expression;
             }
@@ -190,6 +195,11 @@ const data = inferFunctionType(`
             name: '1',
             age: 1
         });
+
+        const ww = () => {
+            return 1;
+        };
+        
     }
     `, 'dd');
 

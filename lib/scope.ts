@@ -2,7 +2,7 @@ import type { Variable } from "./variable";
 import type { BaseType } from "./NodeType";
 import { SyntaxKind, type ParameterDeclaration } from 'ts-morph';
 import { createVariable } from "./variable"
-import { ObjectType } from "./NodeType";
+import { isObjectType, ObjectType } from "./NodeType";
 import {
     getAllParametersType,
     getBasicTypeToVariable,
@@ -43,7 +43,7 @@ export function createScope(
         console.log(
             '<<<<',
             paramsMap['props']?.currentType?.toString(),
-            localVariables['d']?.currentType?.toString(),
+            localVariables['ww']?.currentType?.toString(),
             '>>>>'
         );
     })
@@ -53,7 +53,7 @@ export function createScope(
             if (item.kind !== SyntaxKind.ObjectBindingPattern) return;
             // 如果是解构 需要赋值到 localVariables
             const origin = item.paramsType.currentType!;
-            if (origin instanceof ObjectType) {
+            if (isObjectType(origin)) {
                 const { properties } = origin;
                 for (const k in properties) {
                     createLocalVariable(k, getBasicTypeToVariable(properties[k]!))
@@ -81,7 +81,7 @@ export function createScope(
         if (!targetType) return null;
         const { currentType } = targetType;
 
-        if (!(currentType instanceof ObjectType)) {
+        if (!(isObjectType(currentType!))) {
             targetType.setTypeRef(new ObjectType())
         }
         return {

@@ -183,6 +183,10 @@ export class FunctionType extends BasicType {
 }
 
 
+export function isBasicType(type: any): type is BasicType {
+    return type instanceof BasicType;
+}
+
 export function isObjectType(type: BasicType): type is ObjectType {
     return type instanceof ObjectType;
 }

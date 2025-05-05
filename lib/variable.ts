@@ -2,7 +2,8 @@ import type { Ref, RefReturn } from "../utils";
 import {
     AnyType,
     BasicType,
-    ObjectType
+    isBasicType,
+    isObjectType,
 } from "./NodeType";
 import { 
     isRef, 
@@ -28,7 +29,7 @@ export function createVariable(iType: Ref<BasicType> | BasicType = new AnyType()
     const [typeRef, setTypeRef] = createRef<BasicType>();
     if (isRef(iType)) {
         setTypeRef(iType.current!);
-    } else if (iType instanceof BasicType) {
+    } else if (isBasicType(iType)) {
         setTypeRef(iType);
     }
     // 内联缓存预留
@@ -41,7 +42,7 @@ export function createVariable(iType: Ref<BasicType> | BasicType = new AnyType()
         toString: () => typeRef.current?.toString()!,
         get: (key: string) => {
             const current = typeRef.current;
-            if (current instanceof ObjectType) {
+            if (isObjectType(current!)) {
                 const objType = current.properties[key];
                 if (objType) {
                     return getBasicTypeToVariable(objType);
