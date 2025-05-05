@@ -28,4 +28,77 @@ describe("函数scope变量类型", () => {
         expect(localVar['data']).toBeUndefined();
         expect(localVar['num']?.currentType?.toString()).toBe('number');
     });
+
+    test("三元运算符", () => {
+        const sourceFile = project.createSourceFile("test1.ts", `
+            const test = () => {
+                const dd = true? 1: "2";
+            }
+        `);
+
+        const GlobalScope = createScope();
+        const fn = getFunction(sourceFile, "test")!;
+        const {
+            getLocalVariables
+        } = parseFunctionBody(fn, GlobalScope);
+        const localVar = getLocalVariables();
+        expect(localVar['dd']?.currentType?.toString()).toBe('number | string');
+    });
+
+    test("n元运算符", () => {
+        const sourceFile = project.createSourceFile("test2.ts", `
+            const test = () => {
+                const dd = true? (
+                    true? ({b: 1}): { a: 1 }
+                ): (
+                    false? ({ e: "1" }): ({r: [1,2,3]})
+                );
+            }
+        `);
+
+        const GlobalScope = createScope();
+        const fn = getFunction(sourceFile, "test")!;
+        const {
+            getLocalVariables
+        } = parseFunctionBody(fn, GlobalScope);
+        const localVar = getLocalVariables();
+        expect(localVar['dd']?.currentType?.toString()).toBe('{ b: number } | { a: number } | { e: string } | { r: number[] }');
+    });
+
+
+    test("三元运算符- 重复类型", () => {
+        const sourceFile = project.createSourceFile("test3.ts", `
+            const test = () => {
+                const dd = true? "1": "xxx"
+            }
+        `);
+
+        const GlobalScope = createScope();
+        const fn = getFunction(sourceFile, "test")!;
+        const {
+            getLocalVariables
+        } = parseFunctionBody(fn, GlobalScope);
+        const localVar = getLocalVariables();
+        expect(localVar['dd']?.currentType?.toString()).toBe('string');
+    });
+
+    test("n元运算符- m层括号", () => {
+        const sourceFile = project.createSourceFile("test4.ts", `
+            const test = () => {
+                const dd = true? (
+                    true? ((({b: 1}))): { a: 1 }
+                ): (
+                    false? ({ e: "1" }): (((({r: [1,2,3]}))))
+                );
+            }
+        `);
+
+        const GlobalScope = createScope();
+        const fn = getFunction(sourceFile, "test")!;
+        const {
+            getLocalVariables
+        } = parseFunctionBody(fn, GlobalScope);
+        const localVar = getLocalVariables();
+        expect(localVar['dd']?.currentType?.toString()).toBe('{ b: number } | { a: number } | { e: string } | { r: number[] }');
+    });
 });

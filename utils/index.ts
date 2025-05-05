@@ -7,7 +7,10 @@ import {
     type SourceFile,
     type FunctionExpression,
     type FunctionDeclaration,
-    type ForEachDescendantTraversalControl
+    type ForEachDescendantTraversalControl,
+    type ConditionalExpression,
+    type ts,
+    type ExpressionedNode
 } from "ts-morph";
 import { AnyType, BooleanType, NumberType, StringType, ObjectType, UnionType, ArrayType, BasicType, FunctionType, isBasicType } from "../lib/NodeType.ts";
 import { createVariable, type Variable } from "../lib/variable.ts";
@@ -39,7 +42,7 @@ export function getAllParametersType(parasms: ParameterDeclaration[]): Parameter
             kind: paramNode.getKind(),
             paramsType: createVariable()
         };
-        
+
         if (Node.isIdentifier(paramNode)) {
             paramsMap[paramName] = currentItem.paramsType;
             currentItem.paramName = paramName;
@@ -79,7 +82,7 @@ export function getPropertyAccessList(expr: PropertyAccessExpression) {
     while (Node.isPropertyAccessExpression(next)) {
         const attrKey = next.getName();
         result.unshift(attrKey);
-        next = next.getExpression();
+        next = getExpression(next);
     }
     if (Node.isIdentifier(next)) {
         result.unshift(next.getText());
@@ -198,6 +201,11 @@ export function getPropertyAssignmentType(scope: Scope, iType: Expression): Vari
             );
             result = createVariable(inferFunctionType);
             break;
+        // n元运算
+        case SyntaxKind.ConditionalExpression:
+            const ConditionalNode = iType.asKindOrThrow(SyntaxKind.ConditionalExpression);
+            result = inferConditionalExpressionType(scope, ConditionalNode);
+            break;
         // 兜底推断类型
         default:
             result = basicTypeToVariable(iType);
@@ -207,17 +215,52 @@ export function getPropertyAssignmentType(scope: Scope, iType: Expression): Vari
     return result;
 }
 
+
+// 获取 whenTrue 和 whenFalse 的联合类型
+function inferConditionalExpressionType(scope: Scope, node: ConditionalExpression): Variable | undefined {
+    const whenTrueNode = node.getWhenTrue(), whenFalseNode = node.getWhenFalse();
+    const unions = [];
+    const whenTrueVariable = getPropertyAssignmentType(scope, unwrapParentheses(whenTrueNode));
+    const whenFalseVariable = getPropertyAssignmentType(scope, unwrapParentheses(whenFalseNode));
+    unions.push(
+        whenTrueVariable,
+        whenFalseVariable
+    );
+
+    return createVariable(
+        new UnionType(unions)
+    )
+}
+
+
 // 推断类型
 export function getInferenceType(
-    scope: Scope, 
+    scope: Scope,
     iType: Expression,
     traversal?: ForEachDescendantTraversalControl
-): Variable | undefined  {
+): Variable | undefined {
     /**
      * 推断类型时，当前解析跳过其所有子节点
      */
     traversal?.skip();
     return getPropertyAssignmentType(scope, iType);
+}
+
+
+// 获取表达式
+export function getExpression(node: Node<ts.Node>) {
+    return (unwrapParentheses(node) as unknown as ExpressionedNode).getExpression();
+}
+
+
+// 获取括号内层节点
+export function unwrapParentheses(node: Node): Expression {
+    let current = node;
+    // 可能存在n个括号包裹表达式
+    while (Node.isParenthesizedExpression(current)) {
+        current = current.getExpression();
+    }
+    return current as Expression;
 }
 
 

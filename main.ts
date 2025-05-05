@@ -1,5 +1,5 @@
-import { ArrowFunction, Expression, FunctionDeclaration, FunctionExpression, Node, Project, SyntaxKind, ts, type ForEachDescendantTraversalControl } from "ts-morph";
-import { getPropertyAccessList, getPropertyAssignmentType, getVariablePropertyValue, createRef, getFunction, getInferenceType } from './utils';
+import { ArrowFunction, FunctionDeclaration, FunctionExpression, Node, Project, SyntaxKind, ts, type ForEachDescendantTraversalControl } from "ts-morph";
+import { getPropertyAccessList, getPropertyAssignmentType, getVariablePropertyValue, createRef, getFunction, getInferenceType, getExpression, unwrapParentheses } from './utils';
 import { ArrayType } from "./lib/NodeType";
 import { createScope, type Scope } from "./lib/scope";
 import { createVariable,  type Variable } from './lib/variable';
@@ -112,7 +112,7 @@ export function parseFunctionBody(
 
     function toCallExpression(node: Node<ts.Node>) {
         const callExpression = node.asKindOrThrow(SyntaxKind.CallExpression);
-        const expression  = callExpression.getExpression();
+        const expression  = getExpression(callExpression);
         const propertyAccessExpression = expression.asKindOrThrow(SyntaxKind.PropertyAccessExpression);
         const methodName = propertyAccessExpression.getName();
         switch (methodName) {
@@ -126,7 +126,7 @@ export function parseFunctionBody(
 
                     getVariablePropertyValue(
                         scope,
-                        getPropertyAccessList(expression.getExpression())
+                        getPropertyAccessList(getExpression(expression))
                     )?.combine(
                         createVariable(
                             new ArrayType(arrowFunctionPropsType?.currentType)
@@ -142,7 +142,8 @@ export function parseFunctionBody(
         const returnNode = node.asKindOrThrow(SyntaxKind.ReturnStatement);
         // 是当前函数的返回语句
         if (returnStatement === returnNode) {
-            setReturnStatementType(getInferenceType(scope, returnNode.getExpression()!, traversal)!);
+            const expression = getExpression(returnNode);
+            setReturnStatementType(getInferenceType(scope, expression, traversal)!);
         }
     }
     
@@ -151,22 +152,12 @@ export function parseFunctionBody(
         if (Node.isArrowFunction(funNode)) {
             const eqGtToken = funNode.getEqualsGreaterThan();
             const nextNode = eqGtToken.getNextSibling()!;
-            const nextKind = nextNode.getKind();
             // 函数显示返回类型
-            if (nextKind === SyntaxKind.Block) {
+            if (Node.isBlock(nextNode)) {
                 return returnStatementType.current;
             }
-            let expressions;
-            // 函数返回缩写带括号 _ => (returnType)
-            if (nextKind === SyntaxKind.ParenthesizedExpression) {
-                const expressionNode = nextNode.asKindOrThrow(SyntaxKind.ParenthesizedExpression);
-                expressions = expressionNode.getExpression();
-            }
-            // 函数返回缩写 _ => returnType
-            else {
-                expressions = nextNode as Expression;
-            }
-            return getPropertyAssignmentType(scope, expressions);
+
+            return getPropertyAssignmentType(scope, unwrapParentheses(nextNode));
         }
         // 普通函数
         else {
@@ -191,11 +182,11 @@ export async function inferFunctionType(
 
 const data = inferFunctionType(`
     function dd(props) {
-
-        const ww = () => {
-            const aa = 11;
-            return 1;
-        };
+       const aa = true? (
+                    true? ({b: 1}): { a: 1 }
+                ): (
+                    false? ({ e: "1" }): ({r: [1,2,3]})
+                );
         
     }
     `, 'dd');
