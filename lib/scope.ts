@@ -15,7 +15,8 @@ export type Scope = {
     findParameter(paramName: string): TargetParamter | null;
     paramsMap: Record<string, Variable>,
     creatDestructured: (targetVariable: Variable, recordType: Record<string, Variable>) => void,
-    getParasmsList: () => ParasmsItem[],
+    getParasmsList: () => ParasmsItem[];
+    getLocalVariables: () => Record<string, Variable>
 };
 
 type TargetParamter = {
@@ -36,14 +37,15 @@ export function createScope(
         findParameter,
         paramsMap,
         creatDestructured,
-        getParasmsList: () => parasmsList
+        getParasmsList: () => parasmsList,
+        getLocalVariables: () => localVariables
     }
 
     Promise.resolve().then(_ => {
         console.log(
             '<<<<',
             paramsMap['props']?.currentType?.toString(),
-            localVariables['ww']?.currentType?.toString(),
+            localVariables['aa']?.currentType?.toString(),
             '>>>>'
         );
     })

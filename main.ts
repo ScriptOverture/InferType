@@ -1,4 +1,4 @@
-import { ArrowFunction, Expression, FunctionDeclaration, FunctionExpression, Node, Project, SyntaxKind, ts } from "ts-morph";
+import { ArrowFunction, Expression, FunctionDeclaration, FunctionExpression, Node, Project, SyntaxKind, ts, type ForEachDescendantTraversalControl } from "ts-morph";
 import { getPropertyAccessList, getPropertyAssignmentType, getVariablePropertyValue, createRef, getFunction } from './utils';
 import { ArrayType } from "./lib/NodeType";
 import { createScope, type Scope } from "./lib/scope";
@@ -21,20 +21,20 @@ export function parseFunctionBody(
         };
     }
     
-    body?.forEachDescendant((node) => {
+    body?.forEachDescendant((node, traversal) => {
         switch (node.getKind()) {
             // 变量申明
             case SyntaxKind.VariableDeclaration:
-                toVariableDeclaration(node);
+                toVariableDeclaration(node, traversal);
                 break;
             case SyntaxKind.BinaryExpression:
-                toBinaryExpression(node);
+                toBinaryExpression(node, traversal);
                 break;
             case SyntaxKind.CallExpression:
-                toCallExpression(node);
+                toCallExpression(node, traversal);
                 break;
             case SyntaxKind.ReturnStatement:
-                toReturnStatement(node);
+                toReturnStatement(node, traversal);
                 break;
             default: { };
         }
@@ -45,10 +45,11 @@ export function parseFunctionBody(
         attributeData: {},
         getParamsType: () => scope.paramsMap,
         getReturnType: getFunctionReturnType,
-        getParasmsList: () => scope.getParasmsList()
+        getParasmsList: () => scope.getParasmsList(),
+        getLocalVariables: () => scope.getLocalVariables()
     };
 
-    function toVariableDeclaration(node: Node<ts.Node>) {
+    function toVariableDeclaration(node: Node<ts.Node>, traversal?: ForEachDescendantTraversalControl) {
         const varDecl = node.asKindOrThrow(SyntaxKind.VariableDeclaration);
         const nameNode = varDecl.getNameNode();
 
@@ -65,6 +66,7 @@ export function parseFunctionBody(
                     let attrType: Variable;
                     if (initializer) {
                         attrType = getPropertyAssignmentType(scope, initializer)!;
+                        traversal?.skip();
                     } else {
                         attrType = createVariable();
                     }
@@ -92,6 +94,7 @@ export function parseFunctionBody(
                 if (rhsType) {
                     // 循环引用
                     newType.combine(rhsType);
+                    traversal?.skip();
                 }
                 
                 break;
@@ -99,18 +102,18 @@ export function parseFunctionBody(
     }
 
 
-    function toBinaryExpression(node: Node<ts.Node>) {
+    function toBinaryExpression(node: Node<ts.Node>, traversal?: ForEachDescendantTraversalControl) {
         const binExp = node.asKindOrThrow(SyntaxKind.BinaryExpression);
         if (binExp.getOperatorToken().getKind() === SyntaxKind.EqualsToken) {
             const leftType = getPropertyAssignmentType(scope, binExp.getLeft());
             const rightType = getPropertyAssignmentType(scope, binExp.getRight());
-
+            traversal?.skip();
             leftType?.combine(rightType!);
         }
     }
 
 
-    function toCallExpression(node: Node<ts.Node>) {
+    function toCallExpression(node: Node<ts.Node>, traversal?: ForEachDescendantTraversalControl) {
         const callExpression = node.asKindOrThrow(SyntaxKind.CallExpression);
         const expression  = callExpression.getExpression();
         const propertyAccessExpression = expression.asKindOrThrow(SyntaxKind.PropertyAccessExpression);
@@ -138,11 +141,12 @@ export function parseFunctionBody(
 
     }
 
-    function toReturnStatement(node: Node<ts.Node>) {
+    function toReturnStatement(node: Node<ts.Node>, traversal?: ForEachDescendantTraversalControl) {
         const returnNode = node.asKindOrThrow(SyntaxKind.ReturnStatement);
         // 是当前函数的返回语句
         if (returnStatement === returnNode) {
             setReturnStatementType(getPropertyAssignmentType(scope, returnNode.getExpression()!)!);
+            traversal?.skip();
         }
     }
     
@@ -191,12 +195,9 @@ export async function inferFunctionType(
 
 const data = inferFunctionType(`
     function dd(props) {
-        const d = () => ({
-            name: '1',
-            age: 1
-        });
 
         const ww = () => {
+            const aa = 11;
             return 1;
         };
         
