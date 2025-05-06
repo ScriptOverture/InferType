@@ -1,5 +1,5 @@
 import { ArrowFunction, FunctionDeclaration, FunctionExpression, Node, Project, SyntaxKind, ts, type ForEachDescendantTraversalControl } from "ts-morph";
-import { getPropertyAccessList, getPropertyAssignmentType, getVariablePropertyValue, createRef, getFunction, getInferenceType, getExpression, unwrapParentheses } from './utils';
+import { getPropertyAccessList, getPropertyAssignmentType, getVariablePropertyValue, createRef, getFunction, getInferenceType, getExpression, unwrapParentheses, inferObjectBindingPatternType } from './utils';
 import { ArrayType } from "./lib/NodeType";
 import { createScope, type Scope } from "./lib/scope";
 import { createVariable,  type Variable } from './lib/variable';
@@ -58,37 +58,20 @@ export function parseFunctionBody(
             case SyntaxKind.ObjectBindingPattern: {
                 const bindingPattern = nameNode.asKindOrThrow(SyntaxKind.ObjectBindingPattern);
                 const initializer = varDecl.getInitializerOrThrow();
-                const rhsType = getInferenceType(scope, initializer, traversal)!;
-                bindingPattern.getElements().forEach(elem => {
-                    const originName = elem.getName();
-                    const propName = elem.getPropertyNameNode()?.getText();
-                    const initializer = elem.getInitializer();
-                    let attrType: Variable;
-                    if (initializer) {
-                        attrType = getInferenceType(scope, initializer, traversal)!;
-                    } else {
-                        attrType = createVariable();
-                    }
-                    // 別名
-                    if (propName) {
-                        // 更新右侧标识
-                        rhsType.combine(attrType);
-                        // 创建词法变量
-                        scope.createLocalVariable(propName, attrType);
-                    } else {
-                        // 非别名， 更新右侧标识的同时还会更新词法环境
-                        scope.creatDestructured(rhsType, {
-                            [originName]: attrType
-                        });
-                    }
-                });
+                inferObjectBindingPatternType(
+                    scope,
+                    bindingPattern,
+                    getInferenceType(scope, initializer, traversal)!,
+                    traversal
+                );
                 break;
             } 
             // 简单别名赋值：例如 const copyProps = props;
             case SyntaxKind.Identifier:
-                const initializer = varDecl.getInitializerOrThrow();
+                const initializer = varDecl.getInitializer();
                 const newType = createVariable();
                 scope.createLocalVariable(nameNode.getText(), newType);
+                if (!initializer) return;
                 const rhsType = getInferenceType(scope, initializer, traversal);
                 if (rhsType) {
                     // 循环引用
@@ -182,8 +165,15 @@ export async function inferFunctionType(
 
 const data = inferFunctionType(`
     function dd(props) {
-        let aa;
-        const a = aa = bb = ee= 1;
+        const {
+                    a,
+                    b,
+                    c
+                } = {
+                    a: 1,
+                    b: "xx",
+                    c: [1,2,3]
+                };
     }
     `, 'dd');
 

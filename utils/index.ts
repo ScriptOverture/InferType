@@ -11,7 +11,8 @@ import {
     type ConditionalExpression,
     type ts,
     type ExpressionedNode,
-    type BinaryExpression
+    type BinaryExpression,
+    type ObjectBindingPattern
 } from "ts-morph";
 import { AnyType, BooleanType, NumberType, StringType, ObjectType, UnionType, ArrayType, BasicType, FunctionType, isBasicType } from "../lib/NodeType.ts";
 import { createVariable, type Variable } from "../lib/variable.ts";
@@ -224,6 +225,52 @@ export function getPropertyAssignmentType(scope: Scope, iType: Expression): Vari
     return result;
 }
 
+// 推断解构对象
+export function inferObjectBindingPatternType(
+    scope: Scope, 
+    node: ObjectBindingPattern,
+    initializerVariable: Variable,
+    traversal: ForEachDescendantTraversalControl
+) {
+    node.getElements().forEach(elem => {
+        // x: a => x | x => x
+        const originName = elem.getName();
+        // 消费的别名
+        const propName = elem.getPropertyNameNode()?.getText();
+        // 默认值
+        const initializer = elem.getInitializer();
+        // let attrType: Variable;
+        let attrType = initializerVariable.get(originName);
+        let hasQueryVariable = false;
+
+        if (!attrType) {
+            // 默认值
+            if (initializer) {
+                attrType = getInferenceType(scope, initializer, traversal)!;
+            } else {
+                attrType = createVariable();
+            }
+        }
+        else {
+            hasQueryVariable = true;
+        }
+        
+        // 別名
+        if (propName) {
+            // 没找到类型更新右侧标识
+            if (!hasQueryVariable) {
+                initializerVariable.combine(attrType);
+            }
+            // 创建词法变量
+            scope.createLocalVariable(propName, attrType);
+        } else {
+            // 非别名， 更新右侧标识的同时还会更新词法环境
+            scope.creatDestructured(initializerVariable, {
+                [originName]: attrType
+            });
+        }
+    });
+}
 
 // 推断连续赋值情况类型
 function inferBinaryExpressionType(scope: Scope, node: BinaryExpression): Variable {

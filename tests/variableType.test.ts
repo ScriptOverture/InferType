@@ -3,6 +3,7 @@ import { Project } from "ts-morph";
 import { parseFunctionBody } from "../main";
 import { createScope } from "../lib/scope";
 import { getFunction } from "../utils";
+import { getUuid } from "./utils";
 
 describe("函数scope变量类型", () => {
     const project = new Project();
@@ -126,5 +127,32 @@ describe("函数scope变量类型", () => {
         expect(localVar['q']?.currentType?.toString()).toBe('number[]');
         expect(localVar['r']?.currentType?.toString()).toBe('number[]');
         expect(localVar['t']?.currentType?.toString()).toBe('number[]');
+    });
+
+
+    test("数值对象解构", () => {
+        const sourceFile = project.createSourceFile(`${getUuid()}.ts`, `
+            const test = () => {
+                const {
+                    a,
+                    b,
+                    c
+                } = {
+                    a: 1,
+                    b: "xx",
+                    c: [1,2,3]
+                };
+            }
+        `);
+
+        const GlobalScope = createScope();
+        const fn = getFunction(sourceFile, "test")!;
+        const {
+            getLocalVariables
+        } = parseFunctionBody(fn, GlobalScope);
+        const localVar = getLocalVariables();
+        expect(localVar['a']?.currentType?.toString()).toBe('number');
+        expect(localVar['b']?.currentType?.toString()).toBe('string');
+        expect(localVar['c']?.currentType?.toString()).toBe('number[]');
     });
 });
