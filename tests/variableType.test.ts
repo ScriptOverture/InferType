@@ -101,4 +101,30 @@ describe("函数scope变量类型", () => {
         const localVar = getLocalVariables();
         expect(localVar['dd']?.currentType?.toString()).toBe('{ b: number } | { a: number } | { e: string } | { r: number[] }');
     });
+
+    test("连续赋值类型", () => {
+        const sourceFile = project.createSourceFile("test5.ts", `
+            const test = () => {
+                let a;
+                let b;
+                let c = a = b = 1;
+                let f = (q = r = t = [1,2,3])
+            }
+        `);
+
+        const GlobalScope = createScope();
+        const fn = getFunction(sourceFile, "test")!;
+        const {
+            getLocalVariables
+        } = parseFunctionBody(fn, GlobalScope);
+        const localVar = getLocalVariables();
+        expect(localVar['a']?.currentType?.toString()).toBe('number');
+        expect(localVar['b']?.currentType?.toString()).toBe('number');
+        expect(localVar['c']?.currentType?.toString()).toBe('number');
+
+        expect(localVar['f']?.currentType?.toString()).toBe('number[]');
+        expect(localVar['q']?.currentType?.toString()).toBe('number[]');
+        expect(localVar['r']?.currentType?.toString()).toBe('number[]');
+        expect(localVar['t']?.currentType?.toString()).toBe('number[]');
+    });
 });

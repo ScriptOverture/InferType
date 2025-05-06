@@ -2,7 +2,7 @@ import type { Variable } from "./variable";
 import type { BaseType } from "./NodeType";
 import { SyntaxKind, type ParameterDeclaration } from 'ts-morph';
 import { createVariable } from "./variable"
-import { isObjectType, ObjectType } from "./NodeType";
+import { AnyType, isObjectType, ObjectType } from "./NodeType";
 import {
     getAllParametersType,
     getBasicTypeToVariable,
@@ -11,7 +11,7 @@ import {
 
 export type Scope = {
     find(name: string): Variable | undefined;
-    createLocalVariable(name: string, iType: BaseType): void;
+    createLocalVariable(name: string, iType?: BaseType): Variable;
     findParameter(paramName: string): TargetParamter | null;
     paramsMap: Record<string, Variable>,
     creatDestructured: (targetVariable: Variable, recordType: Record<string, Variable>) => void,
@@ -99,8 +99,8 @@ export function createScope(
             || prototype?.find(name);
     }
 
-    function createLocalVariable(name: string, variable: Variable) {
-        localVariables[name] = variable;
+    function createLocalVariable(name: string, variable: Variable = createVariable(new AnyType())) {
+        return localVariables[name] = variable;
     }
 
     return _resultSelf

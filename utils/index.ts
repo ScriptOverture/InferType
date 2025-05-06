@@ -10,7 +10,8 @@ import {
     type ForEachDescendantTraversalControl,
     type ConditionalExpression,
     type ts,
-    type ExpressionedNode
+    type ExpressionedNode,
+    type BinaryExpression
 } from "ts-morph";
 import { AnyType, BooleanType, NumberType, StringType, ObjectType, UnionType, ArrayType, BasicType, FunctionType, isBasicType } from "../lib/NodeType.ts";
 import { createVariable, type Variable } from "../lib/variable.ts";
@@ -203,9 +204,17 @@ export function getPropertyAssignmentType(scope: Scope, iType: Expression): Vari
             break;
         // n元运算
         case SyntaxKind.ConditionalExpression:
-            const ConditionalNode = iType.asKindOrThrow(SyntaxKind.ConditionalExpression);
-            result = inferConditionalExpressionType(scope, ConditionalNode);
+            const conditionalNode = iType.asKindOrThrow(SyntaxKind.ConditionalExpression);
+            result = inferConditionalExpressionType(scope, conditionalNode);
             break;
+        // 连续赋值 x = b = c = 1;
+        case SyntaxKind.BinaryExpression:
+            const binaryExpressionNode = iType.asKindOrThrow(SyntaxKind.BinaryExpression);
+            result = inferBinaryExpressionType(scope, binaryExpressionNode);
+            break;
+        // 括号包裹
+        case SyntaxKind.ParenthesizedExpression:
+            return getPropertyAssignmentType(scope, unwrapParentheses(iType));
         // 兜底推断类型
         default:
             result = basicTypeToVariable(iType);
@@ -216,19 +225,36 @@ export function getPropertyAssignmentType(scope: Scope, iType: Expression): Vari
 }
 
 
+// 推断连续赋值情况类型
+function inferBinaryExpressionType(scope: Scope, node: BinaryExpression): Variable {
+    const leftToken = node.getLeft();
+    const rightToken = node.getRight();
+    const leftVariable = scope.find(leftToken.getText()) || scope.createLocalVariable(leftToken.getText());
+
+    //
+    if (Node.isBinaryExpression(rightToken)) {
+        const rightVariableType = inferBinaryExpressionType(scope, rightToken);
+        leftVariable.combine(rightVariableType)
+    }
+    else {
+        leftVariable.combine(getPropertyAssignmentType(scope, rightToken)!);
+    }
+
+    return leftVariable!;
+}
+
+
 // 获取 whenTrue 和 whenFalse 的联合类型
-function inferConditionalExpressionType(scope: Scope, node: ConditionalExpression): Variable | undefined {
+function inferConditionalExpressionType(scope: Scope, node: ConditionalExpression): Variable {
     const whenTrueNode = node.getWhenTrue(), whenFalseNode = node.getWhenFalse();
-    const unions = [];
-    const whenTrueVariable = getPropertyAssignmentType(scope, unwrapParentheses(whenTrueNode));
-    const whenFalseVariable = getPropertyAssignmentType(scope, unwrapParentheses(whenFalseNode));
-    unions.push(
-        whenTrueVariable,
-        whenFalseVariable
-    );
+    const whenTrueVariable = getPropertyAssignmentType(scope, unwrapParentheses(whenTrueNode))!;
+    const whenFalseVariable = getPropertyAssignmentType(scope, unwrapParentheses(whenFalseNode))!;
 
     return createVariable(
-        new UnionType(unions)
+        new UnionType([
+            whenTrueVariable,
+            whenFalseVariable
+        ])
     )
 }
 
@@ -243,7 +269,11 @@ export function getInferenceType(
      * 推断类型时，当前解析跳过其所有子节点
      */
     traversal?.skip();
-    return getPropertyAssignmentType(scope, iType);
+    try {
+        return getPropertyAssignmentType(scope, iType);
+    } catch (err) {
+        console.error("Parse error:", err);
+    }
 }
 
 

@@ -31,7 +31,7 @@ export function parseFunctionBody(
                 toBinaryExpression(node, traversal);
                 break;
             case SyntaxKind.CallExpression:
-                toCallExpression(node, traversal);
+                toCallExpression(node);
                 break;
             case SyntaxKind.ReturnStatement:
                 toReturnStatement(node, traversal);
@@ -103,9 +103,9 @@ export function parseFunctionBody(
     function toBinaryExpression(node: Node<ts.Node>, traversal: ForEachDescendantTraversalControl) {
         const binExp = node.asKindOrThrow(SyntaxKind.BinaryExpression);
         if (binExp.getOperatorToken().getKind() === SyntaxKind.EqualsToken) {
-            const leftType = getInferenceType(scope, binExp.getLeft(), traversal);
+            const leftType = getInferenceType(scope, binExp.getLeft(), traversal)!;
             const rightType = getInferenceType(scope, binExp.getRight(), traversal);
-            leftType?.combine(rightType!);
+            leftType.combine(rightType!);
         }
     }
 
@@ -182,12 +182,8 @@ export async function inferFunctionType(
 
 const data = inferFunctionType(`
     function dd(props) {
-       const aa = true? (
-                    true? ({b: 1}): { a: 1 }
-                ): (
-                    false? ({ e: "1" }): ({r: [1,2,3]})
-                );
-        
+        let aa;
+        const a = aa = bb = ee= 1;
     }
     `, 'dd');
 
