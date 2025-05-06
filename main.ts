@@ -1,6 +1,18 @@
 import { ArrowFunction, FunctionDeclaration, FunctionExpression, Node, Project, SyntaxKind, ts, type ForEachDescendantTraversalControl } from "ts-morph";
-import { getPropertyAccessList, getPropertyAssignmentType, getVariablePropertyValue, createRef, getFunction, getInferenceType, getExpression, unwrapParentheses, inferObjectBindingPatternType } from './utils';
-import { ArrayType } from "./lib/NodeType";
+import {
+    getPropertyAccessList,
+    getPropertyAssignmentType,
+    getVariablePropertyValue,
+    createRef,
+    getFunction,
+    getInferenceType,
+    getExpression,
+    unwrapParentheses,
+    inferObjectBindingPatternType,
+    uniqueBaseType,
+    inferArrayBindingPattern
+} from './utils';
+import { ArrayType, NumberType, StringType } from "./lib/NodeType";
 import { createScope, type Scope } from "./lib/scope";
 import { createVariable,  type Variable } from './lib/variable';
 
@@ -65,7 +77,19 @@ export function parseFunctionBody(
                     traversal
                 );
                 break;
-            } 
+            }
+            // 数组解构
+            case SyntaxKind.ArrayBindingPattern: {
+                const bindingPattern = nameNode.asKindOrThrow(SyntaxKind.ArrayBindingPattern);
+                const initializer = varDecl.getInitializerOrThrow();
+                inferArrayBindingPattern(
+                    scope,
+                    bindingPattern,
+                    getInferenceType(scope, initializer, traversal)!,
+                    traversal
+                )
+                break;
+            }
             // 简单别名赋值：例如 const copyProps = props;
             case SyntaxKind.Identifier:
                 const initializer = varDecl.getInitializer();
@@ -165,15 +189,15 @@ export async function inferFunctionType(
 
 const data = inferFunctionType(`
     function dd(props) {
-        const {
+        const [
                     a,
                     b,
                     c
-                } = {
-                    a: 1,
-                    b: "xx",
-                    c: [1,2,3]
-                };
+     ] = [
+        1,
+        "asd",
+        () => [1,2,3],
+     ]
     }
     `, 'dd');
 
@@ -185,3 +209,12 @@ const data = inferFunctionType(`
 
         const dd = () => 1;
     }
+
+
+let t = uniqueBaseType([
+    new StringType(),
+    new NumberType(),
+    new StringType(),
+    new NumberType()
+]);
+console.log(t.length, t);

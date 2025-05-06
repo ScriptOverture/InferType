@@ -130,7 +130,7 @@ describe("函数scope变量类型", () => {
     });
 
 
-    test("数值对象解构", () => {
+    test("数据对象解构", () => {
         const sourceFile = project.createSourceFile(`${getUuid()}.ts`, `
             const test = () => {
                 const {
@@ -154,5 +154,30 @@ describe("函数scope变量类型", () => {
         expect(localVar['a']?.currentType?.toString()).toBe('number');
         expect(localVar['b']?.currentType?.toString()).toBe('string');
         expect(localVar['c']?.currentType?.toString()).toBe('number[]');
+    });
+
+    test("数据数组解构", () => {
+        const sourceFile = project.createSourceFile(`${getUuid()}.ts`, `
+            const test = () => {
+                const [
+                    a,
+                    b,
+                    c
+     ] = [
+        1,
+        "asd",
+        () => [1,2,3],
+     ]
+        `);
+
+        const GlobalScope = createScope();
+        const fn = getFunction(sourceFile, "test")!;
+        const {
+            getLocalVariables
+        } = parseFunctionBody(fn, GlobalScope);
+        const localVar = getLocalVariables();
+        expect(localVar['a']?.currentType?.toString()).toBe('number');
+        expect(localVar['b']?.currentType?.toString()).toBe('string');
+        expect(localVar['c']?.currentType?.toString()).toBe('() => number[]');
     });
 });

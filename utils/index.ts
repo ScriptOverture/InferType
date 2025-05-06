@@ -12,9 +12,23 @@ import {
     type ts,
     type ExpressionedNode,
     type BinaryExpression,
-    type ObjectBindingPattern
+    type ObjectBindingPattern,
+    type ArrayBindingPattern
 } from "ts-morph";
-import { AnyType, BooleanType, NumberType, StringType, ObjectType, UnionType, ArrayType, BasicType, FunctionType, isBasicType } from "../lib/NodeType.ts";
+import {
+    AnyType,
+    BooleanType,
+    NumberType,
+    StringType,
+    ObjectType,
+    UnionType,
+    ArrayType,
+    TupleType,
+    BasicType,
+    FunctionType,
+    isBasicType,
+    isTupleType
+} from "../lib/NodeType.ts";
 import { createVariable, type Variable } from "../lib/variable.ts";
 import type { Scope } from "../lib/scope.ts";
 import { parseFunctionBody } from "../main.ts"
@@ -185,13 +199,29 @@ export function getPropertyAssignmentType(scope: Scope, iType: Expression): Vari
         case SyntaxKind.ArrayLiteralExpression:
             const arrayNode = iType.asKindOrThrow(SyntaxKind.ArrayLiteralExpression);
             const arrayElements = arrayNode.getElements();
-            const arrayType = new Set<Variable>();
-            for (const element of arrayElements) {
-                arrayType.add(getPropertyAssignmentType(scope, element)!);
+
+            // 收集每个位置的类型（保持顺序）
+            const elementVars = arrayElements.map(elem => {
+                const v = getPropertyAssignmentType(scope, elem);
+                if (!v) throw new Error("无法推断元素类型");
+                return v;
+            });
+            const elementTypes = elementVars.map(v => v.currentType!);
+
+            // 判断是否所有元素类型都相同
+            const firstType = elementTypes[0];
+            const allSame = elementTypes.every(t => firstType?.constructor === t.constructor);
+
+            if (allSame) {
+                // 同质数组：T[]
+                const unionType = new UnionType([firstType!]);
+                result = createVariable(new ArrayType(unionType));
+            } else {
+                // 异构数组——元组
+                // 直接用位置类型列表来构造 TupleType
+                const tupleType = new TupleType(elementTypes);
+                result = createVariable(tupleType);
             }
-            const itemType = new UnionType([...arrayType].map(item => item.currentType!));
-            const newArrayType = new ArrayType(itemType);
-            result = createVariable(newArrayType);
             break;
         // 箭头函数
         case SyntaxKind.ArrowFunction:
@@ -225,9 +255,15 @@ export function getPropertyAssignmentType(scope: Scope, iType: Expression): Vari
     return result;
 }
 
-// 推断解构对象
+/**
+ * 推断解构对象
+ * @param scope
+ * @param node
+ * @param initializerVariable
+ * @param traversal
+ */
 export function inferObjectBindingPatternType(
-    scope: Scope, 
+    scope: Scope,
     node: ObjectBindingPattern,
     initializerVariable: Variable,
     traversal: ForEachDescendantTraversalControl
@@ -269,6 +305,43 @@ export function inferObjectBindingPatternType(
                 [originName]: attrType
             });
         }
+    });
+}
+
+/**
+ * 推断解构数组
+ * @param scope
+ * @param node
+ * @param initializerVariable
+ * @param traversal
+ */
+export function inferArrayBindingPattern(
+    scope: Scope,
+    node: ArrayBindingPattern,
+    initializerVariable: Variable,
+    traversal: ForEachDescendantTraversalControl
+) {
+    if (!isTupleType(initializerVariable.currentType!)) return;
+    const targetTuple = initializerVariable.currentType;
+    node.getElements().forEach((elem, index) => {
+        const originName = elem.getName();
+        // 默认值
+        const initializer = elem.getInitializer();
+        let targetType = targetTuple.getIndexType(index)!;
+
+        if (!targetType) {
+            // 默认值
+            if (initializer) {
+                targetType = getInferenceType(scope, initializer, traversal)!;
+            } else {
+                targetType = createVariable();
+            }
+        }
+
+        // 非别名， 更新右侧标识的同时还会更新词法环境
+        scope.creatDestructured(initializerVariable, {
+            [originName]: getBasicTypeToVariable(targetType)
+        });
     });
 }
 
@@ -410,4 +483,17 @@ export function getFunction(sourceFile: SourceFile, targetFuncName: string) {
         iFunction = funParams;
     }
     return iFunction;
+}
+
+
+export function uniqueBaseType(types: BasicType[]): BasicType[] {
+    const result: BasicType[] = [];
+    types.forEach((item, index) => {
+        const state = types.slice(index + 1).some(el => item.constructor === el.constructor);
+        if (!state) {
+            result.push(item)
+        }
+    })
+
+    return result
 }

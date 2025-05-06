@@ -66,6 +66,35 @@ export class ArrayType extends BasicType {
 }
 
 
+/**
+ * 元组类型
+ */
+export class TupleType extends BasicType {
+    constructor(public elementsType: BasicType[] = []) {
+        super();
+    }
+
+    toString() {
+        return `[${this.elementsType.join()}]`;
+    }
+
+    combine(other: BasicType): BasicType {
+        if (other instanceof AnyType) return this;
+
+        // if (other instanceof ArrayType) {
+        //     return new ArrayType(this.elementsType.combine(other.elementType));
+        // }
+        return new UnionType([this, other]);
+    }
+
+    getIndexType(n: number) {
+        return this.elementsType[n];
+    }
+}
+
+
+
+
 // 索引类型（保持原设计）
 export class IndexType extends BasicType {
     constructor(
@@ -197,4 +226,8 @@ export function isStringType(type: BasicType): type is StringType {
 
 export function isNumberType(type: BasicType): type is NumberType {
     return type instanceof NumberType;
+}
+
+export function isTupleType(type: BasicType): type is TupleType {
+    return type instanceof TupleType;
 }
