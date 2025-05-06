@@ -1,6 +1,6 @@
 import type { Variable } from "./variable";
 import { SyntaxKind } from 'ts-morph';
-import type { ParasmsItem } from "../utils";
+import { isString, type ParasmsItem } from "../utils";
 
 // 基础类型抽象
 export abstract class BasicType {
@@ -87,8 +87,12 @@ export class TupleType extends BasicType {
         return new UnionType([this, other]);
     }
 
-    getIndexType(n: number) {
-        return this.elementsType[n];
+    getIndexType(n: number | string) {
+        let index = n as number;
+        if (isString(n)) {
+            index = Number(n.replace(/'/g, ''));
+        }
+        return this.elementsType[index];
     }
 }
 

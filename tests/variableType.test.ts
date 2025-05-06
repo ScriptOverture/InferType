@@ -192,6 +192,10 @@ describe("函数scope变量类型", () => {
         let l1 = target[0];
         let l2 = target[1];
         let l3 = target[2];
+        
+        let q1 = target['0'];
+        let q2 = target['1'];
+        let q3 = target['2'];
         `);
 
         const GlobalScope = createScope();
@@ -204,5 +208,9 @@ describe("函数scope变量类型", () => {
         expect(localVar['l1']?.currentType?.toString()).toBe('number');
         expect(localVar['l2']?.currentType?.toString()).toBe('string');
         expect(localVar['l3']?.currentType?.toString()).toBe('() => number[]');
+
+        expect(localVar['q1']?.currentType?.toString()).toBe('number');
+        expect(localVar['q2']?.currentType?.toString()).toBe('string');
+        expect(localVar['q3']?.currentType?.toString()).toBe('() => number[]');
     });
 });

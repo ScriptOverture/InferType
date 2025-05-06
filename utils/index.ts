@@ -253,8 +253,8 @@ export function getPropertyAssignmentType(scope: Scope, iType: Expression): Vari
             const targetExpressionToken = getExpression(elementAccessExpressionNode);
             const expressionVariable = getPropertyAssignmentType(scope, targetExpressionToken);
             if (!expressionVariable || !isTupleType(expressionVariable.currentType!)) return;
-            const expressionTokenIndex = elementAccessExpressionNode.getArgumentExpression()?.getText();
-            const resultVariable = expressionVariable.currentType.getIndexType(Number(expressionTokenIndex));
+            const expressionTokenIndex = elementAccessExpressionNode.getArgumentExpression()?.getText()!;
+            const resultVariable = expressionVariable.currentType.getIndexType(expressionTokenIndex);
             if (resultVariable) {
                 result = getBasicTypeToVariable(resultVariable)
             }
@@ -462,6 +462,14 @@ export function isRef<T>(data: any): data is Ref<T> {
 
 export function isVariable(data: any): data is Variable {
     return data && data.ref && data.currentType && data.setTypeRef;
+}
+
+export function isString(n: any): n is string {
+    return typeof n === 'string';
+}
+
+export function isNumber(n: any): n is number {
+    return typeof n === 'number';
 }
 
 

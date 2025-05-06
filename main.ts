@@ -189,15 +189,16 @@ export async function inferFunctionType(
 
 const data = inferFunctionType(`
     function dd(props) {
-        const [
-                    a,
-                    b,
-                    c
-     ] = [
+        const test = () => {
+                const target = [
         1,
         "asd",
         () => [1,2,3],
-     ]
+     ];
+        
+        let q1 = target['0'];
+        let q2 = target['1'];
+        let q3 = target['2'];
     }
     `, 'dd');
 
@@ -209,12 +210,3 @@ const data = inferFunctionType(`
 
         const dd = () => 1;
     }
-
-
-let t = uniqueBaseType([
-    new StringType(),
-    new NumberType(),
-    new StringType(),
-    new NumberType()
-]);
-console.log(t.length, t);
