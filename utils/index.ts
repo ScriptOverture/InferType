@@ -245,7 +245,20 @@ export function getPropertyAssignmentType(scope: Scope, iType: Expression): Vari
             break;
         // 括号包裹
         case SyntaxKind.ParenthesizedExpression:
-            return getPropertyAssignmentType(scope, unwrapParentheses(iType));
+            result = getPropertyAssignmentType(scope, unwrapParentheses(iType));
+            break;
+        // 元素访问 | list[index]
+        case SyntaxKind.ElementAccessExpression:
+            const elementAccessExpressionNode = iType.asKindOrThrow(SyntaxKind.ElementAccessExpression);
+            const targetExpressionToken = getExpression(elementAccessExpressionNode);
+            const expressionVariable = getPropertyAssignmentType(scope, targetExpressionToken);
+            if (!expressionVariable || !isTupleType(expressionVariable.currentType!)) return;
+            const expressionTokenIndex = elementAccessExpressionNode.getArgumentExpression()?.getText();
+            const resultVariable = expressionVariable.currentType.getIndexType(Number(expressionTokenIndex));
+            if (resultVariable) {
+                result = getBasicTypeToVariable(resultVariable)
+            }
+            break;
         // 兜底推断类型
         default:
             result = basicTypeToVariable(iType);

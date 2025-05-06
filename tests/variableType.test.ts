@@ -180,4 +180,29 @@ describe("函数scope变量类型", () => {
         expect(localVar['b']?.currentType?.toString()).toBe('string');
         expect(localVar['c']?.currentType?.toString()).toBe('() => number[]');
     });
+
+    test("元组类型", () => {
+        const sourceFile = project.createSourceFile(`${getUuid()}.ts`, `
+            const test = () => {
+                const target = [
+        1,
+        "asd",
+        () => [1,2,3],
+     ];
+        let l1 = target[0];
+        let l2 = target[1];
+        let l3 = target[2];
+        `);
+
+        const GlobalScope = createScope();
+        const fn = getFunction(sourceFile, "test")!;
+        const {
+            getLocalVariables
+        } = parseFunctionBody(fn, GlobalScope);
+        const localVar = getLocalVariables();
+        expect(localVar['target']?.currentType?.toString()).toBe('[number,string,() => number[]]');
+        expect(localVar['l1']?.currentType?.toString()).toBe('number');
+        expect(localVar['l2']?.currentType?.toString()).toBe('string');
+        expect(localVar['l3']?.currentType?.toString()).toBe('() => number[]');
+    });
 });
