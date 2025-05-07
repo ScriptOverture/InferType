@@ -1,107 +1,114 @@
-import type { Variable } from "./variable";
-import type { BaseType } from "./NodeType";
-import { SyntaxKind, type ParameterDeclaration } from 'ts-morph';
-import { createVariable } from "./variable"
-import { AnyType, isObjectType, ObjectType } from "./NodeType";
+import type { Variable } from './variable'
+import type { BaseType } from './NodeType'
+import { SyntaxKind, type ParameterDeclaration } from 'ts-morph'
+import { createVariable } from './variable'
+import { AnyType, isObjectType, ObjectType } from './NodeType'
 import {
-    getAllParametersType,
-    getBasicTypeToVariable,
-    type ParasmsItem
-} from "../utils";
+  getAllParametersType,
+  getBasicTypeToVariable,
+  type ParasmsItem,
+} from '../utils'
 
 export type Scope = {
-    find(name: string): Variable | undefined;
-    createLocalVariable(name: string, iType?: BaseType): Variable;
-    findParameter(paramName: string): TargetParamter | null;
-    paramsMap: Record<string, Variable>,
-    creatDestructured: (targetVariable: Variable, recordType: Record<string, Variable>) => void,
-    getParasmsList: () => ParasmsItem[];
-    getLocalVariables: () => Record<string, Variable>
-};
+  find(name: string): Variable | undefined
+  createLocalVariable(name: string, iType?: BaseType): Variable
+  findParameter(paramName: string): TargetParamter | null
+  paramsMap: Record<string, Variable>
+  creatDestructured: (
+    targetVariable: Variable,
+    recordType: Record<string, Variable>,
+  ) => void
+  getParasmsList: () => ParasmsItem[]
+  getLocalVariables: () => Record<string, Variable>
+}
 
 type TargetParamter = {
-    creatDestructured: (recordType: Record<string, Variable>) => void
-};
+  creatDestructured: (recordType: Record<string, Variable>) => void
+}
 
 export function createScope(
-    parameters: ParameterDeclaration[] = [],
-    localVariables: Record<string, Variable> = {},
-    prototype?: Scope
+  parameters: ParameterDeclaration[] = [],
+  localVariables: Record<string, Variable> = {},
+  prototype?: Scope,
 ) {
-    const { paramsMap, parasmsList } = getAllParametersType(parameters);
-    initialLocalVariables();
+  const { paramsMap, parasmsList } = getAllParametersType(parameters)
+  initialLocalVariables()
 
-    const _resultSelf: Scope = {
-        find,
-        createLocalVariable,
-        findParameter,
-        paramsMap,
-        creatDestructured,
-        getParasmsList: () => parasmsList,
-        getLocalVariables: () => localVariables
-    }
+  const _resultSelf: Scope = {
+    find,
+    createLocalVariable,
+    findParameter,
+    paramsMap,
+    creatDestructured,
+    getParasmsList: () => parasmsList,
+    getLocalVariables: () => localVariables,
+  }
 
-    Promise.resolve().then(_ => {
-        console.log(
-            '<<<<',
-            paramsMap['props']?.currentType?.toString(),
-            localVariables['aa']?.currentType?.toString(),
-            '>>>>'
-        );
+  Promise.resolve().then(() => {
+    console.log(
+      '<<<<',
+      paramsMap['props']?.currentType?.toString(),
+      localVariables['aa']?.currentType?.toString(),
+      '>>>>',
+    )
+  })
+
+  function initialLocalVariables() {
+    parasmsList.forEach((item) => {
+      if (item.kind !== SyntaxKind.ObjectBindingPattern) return
+      // 如果是解构 需要赋值到 localVariables
+      const origin = item.paramsType.currentType!
+      if (isObjectType(origin)) {
+        const { properties } = origin
+        for (const k in properties) {
+          createLocalVariable(k, getBasicTypeToVariable(properties[k]!))
+        }
+      }
     })
+  }
 
-    function initialLocalVariables() {
-        parasmsList.forEach(item => {
-            if (item.kind !== SyntaxKind.ObjectBindingPattern) return;
-            // 如果是解构 需要赋值到 localVariables
-            const origin = item.paramsType.currentType!;
-            if (isObjectType(origin)) {
-                const { properties } = origin;
-                for (const k in properties) {
-                    createLocalVariable(k, getBasicTypeToVariable(properties[k]!))
-                }
-            }
-        });
+  function creatDestructured(
+    targetVariable: Variable,
+    recordType: Record<string, Variable>,
+  ) {
+    const variable = createVariable(new ObjectType(recordType))
+    targetVariable.combine(variable)
+
+    for (const k in recordType) {
+      if (Object.hasOwn(localVariables, k)) {
+        // 有 同步bug
+        localVariables[k] = localVariables[k]?.combine(variable.get(k)!)!
+      } else {
+        localVariables[k] = variable.get(k)!
+      }
     }
+  }
 
-    function creatDestructured(targetVariable: Variable, recordType: Record<string, Variable>) {
-        const variable = createVariable(new ObjectType(recordType));
-        targetVariable.combine(variable);
+  function findParameter(paramName: string) {
+    const targetType = find(paramName)
+    if (!targetType) return null
+    const { currentType } = targetType
 
-        for (const k in recordType) {
-            if (localVariables.hasOwnProperty(k)) {
-                // 有 同步bug
-                localVariables[k] = localVariables[k]?.combine(variable.get(k)!)!
-            } else {
-                localVariables[k] = variable.get(k)!;
-            }
-        }
+    if (!isObjectType(currentType!)) {
+      targetType.setTypeRef(new ObjectType())
     }
-
-    function findParameter(paramName: string) {
-        const targetType = find(paramName);
-        if (!targetType) return null;
-        const { currentType } = targetType;
-
-        if (!(isObjectType(currentType!))) {
-            targetType.setTypeRef(new ObjectType())
-        }
-        return {
-            creatDestructured(recordType: Record<string, Variable>) {
-                creatDestructured(targetType, recordType);
-            }
-        }
+    return {
+      creatDestructured(recordType: Record<string, Variable>) {
+        creatDestructured(targetType, recordType)
+      },
     }
+  }
 
-    function find(name: string) {
-        return localVariables[name]
-            || paramsMap[name]
-            || prototype?.find(name);
-    }
+  function find(name: string) {
+    return localVariables[name] || paramsMap[name] || prototype?.find(name)
+  }
 
-    function createLocalVariable(name: string, variable: Variable = createVariable(new AnyType())) {
-        return localVariables[name] = variable;
-    }
+  function createLocalVariable(
+    name: string,
+    variable: Variable = createVariable(new AnyType()),
+  ) {
+    return (localVariables[name] = variable)
+  }
 
-    return _resultSelf
+  return _resultSelf
 }

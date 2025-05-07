@@ -1,200 +1,237 @@
-import { ArrowFunction, FunctionDeclaration, FunctionExpression, Node, Project, SyntaxKind, ts, type ForEachDescendantTraversalControl } from "ts-morph";
 import {
-    getPropertyAccessList,
-    getPropertyAssignmentType,
-    getVariablePropertyValue,
-    createRef,
-    getFunction,
-    getInferenceType,
-    getExpression,
-    unwrapParentheses,
-    inferObjectBindingPatternType,
-    inferArrayBindingPattern
-} from './utils';
-import { ArrayType } from "./lib/NodeType";
-import { createScope, type Scope } from "./lib/scope";
-import { createVariable,  type Variable } from './lib/variable';
+  ArrowFunction,
+  FunctionDeclaration,
+  FunctionExpression,
+  Node,
+  Project,
+  SyntaxKind,
+  ts,
+  type ForEachDescendantTraversalControl,
+} from 'ts-morph'
+import {
+  getPropertyAccessList,
+  getPropertyAssignmentType,
+  getVariablePropertyValue,
+  createRef,
+  getFunction,
+  getInferenceType,
+  getExpression,
+  unwrapParentheses,
+  inferObjectBindingPatternType,
+  inferArrayBindingPattern,
+} from './utils'
+import { ArrayType } from './lib/NodeType'
+import { createScope, type Scope } from './lib/scope'
+import { createVariable, type Variable } from './lib/variable'
 
 export function parseFunctionBody(
-    funNode: FunctionExpression | ArrowFunction | FunctionDeclaration,
-    scopePrototype?: Scope
+  funNode: FunctionExpression | ArrowFunction | FunctionDeclaration,
+  scopePrototype?: Scope,
 ) {
-    const iFunction = funNode as unknown as FunctionExpression | ArrowFunction | FunctionDeclaration;
-    const { params, body, returnStatement } = getFunction();
-    const scope = createScope(params, {}, scopePrototype);
-    const [returnStatementType, setReturnStatementType] = createRef<Variable>();
-    function getFunction() {
-        return {
-            body: iFunction!.getBody(),
-            params: iFunction?.getParameters()!,
-            returnStatement: iFunction?.getBody()?.asKind(SyntaxKind.Block)?.getStatement((node) => node.getKind() === SyntaxKind.ReturnStatement),
-            propertyAccesses: iFunction?.getDescendantsOfKind(SyntaxKind.PropertyAccessExpression)
-        };
-    }
-    
-    body?.forEachDescendant((node, traversal) => {
-        switch (node.getKind()) {
-            // 变量申明
-            case SyntaxKind.VariableDeclaration:
-                toVariableDeclaration(node, traversal);
-                break;
-            case SyntaxKind.BinaryExpression:
-                toBinaryExpression(node, traversal);
-                break;
-            case SyntaxKind.CallExpression:
-                toCallExpression(node);
-                break;
-            case SyntaxKind.ReturnStatement:
-                toReturnStatement(node, traversal);
-                break;
-            case SyntaxKind.IfStatement:
-                toIfStatement(node, traversal);
-                break;
-            default: { };
-        }
-    });
-
+  const iFunction = funNode as unknown as
+    | FunctionExpression
+    | ArrowFunction
+    | FunctionDeclaration
+  const { params, body, returnStatement } = getFunction()
+  const scope = createScope(params, {}, scopePrototype)
+  const [returnStatementType, setReturnStatementType] = createRef<Variable>()
+  function getFunction() {
     return {
-        ...params,
-        attributeData: {},
-        getParamsType: () => scope.paramsMap,
-        getReturnType: getFunctionReturnType,
-        getParasmsList: () => scope.getParasmsList(),
-        getLocalVariables: () => scope.getLocalVariables()
-    };
-
-    function toVariableDeclaration(node: Node<ts.Node>, traversal: ForEachDescendantTraversalControl) {
-        const varDecl = node.asKindOrThrow(SyntaxKind.VariableDeclaration);
-        const nameNode = varDecl.getNameNode();
-
-        switch (nameNode.getKind()) {
-            // 对象解构：例如 const { name, data } = props;
-            case SyntaxKind.ObjectBindingPattern: {
-                const bindingPattern = nameNode.asKindOrThrow(SyntaxKind.ObjectBindingPattern);
-                const initializer = varDecl.getInitializerOrThrow();
-                inferObjectBindingPatternType(
-                    scope,
-                    bindingPattern,
-                    getInferenceType(scope, initializer, traversal)!,
-                    traversal
-                );
-                break;
-            }
-            // 数组解构
-            case SyntaxKind.ArrayBindingPattern: {
-                const bindingPattern = nameNode.asKindOrThrow(SyntaxKind.ArrayBindingPattern);
-                const initializer = varDecl.getInitializerOrThrow();
-                inferArrayBindingPattern(
-                    scope,
-                    bindingPattern,
-                    getInferenceType(scope, initializer, traversal)!,
-                    traversal
-                )
-                break;
-            }
-            // 简单别名赋值：例如 const copyProps = props;
-            case SyntaxKind.Identifier:
-                const initializer = varDecl.getInitializer();
-                const newType = createVariable();
-                scope.createLocalVariable(nameNode.getText(), newType);
-                if (!initializer) return;
-                const rhsType = getInferenceType(scope, initializer, traversal);
-                if (rhsType) {
-                    // 循环引用
-                    newType.combine(rhsType);
-                }
-                
-                break;
-        }
+      body: iFunction!.getBody(),
+      params: iFunction?.getParameters()!,
+      returnStatement: iFunction
+        ?.getBody()
+        ?.asKind(SyntaxKind.Block)
+        ?.getStatement((node) => node.getKind() === SyntaxKind.ReturnStatement),
+      propertyAccesses: iFunction?.getDescendantsOfKind(
+        SyntaxKind.PropertyAccessExpression,
+      ),
     }
+  }
 
-
-    function toBinaryExpression(node: Node<ts.Node>, traversal: ForEachDescendantTraversalControl) {
-        const binExp = node.asKindOrThrow(SyntaxKind.BinaryExpression);
-        if (binExp.getOperatorToken().getKind() === SyntaxKind.EqualsToken) {
-            const leftType = getInferenceType(scope, binExp.getLeft(), traversal)!;
-            const rightType = getInferenceType(scope, binExp.getRight(), traversal);
-            leftType.combine(rightType!);
-        }
+  body?.forEachDescendant((node, traversal) => {
+    switch (node.getKind()) {
+      // 变量申明
+      case SyntaxKind.VariableDeclaration:
+        toVariableDeclaration(node, traversal)
+        break
+      case SyntaxKind.BinaryExpression:
+        toBinaryExpression(node, traversal)
+        break
+      case SyntaxKind.CallExpression:
+        toCallExpression(node)
+        break
+      case SyntaxKind.ReturnStatement:
+        toReturnStatement(node, traversal)
+        break
+      case SyntaxKind.IfStatement:
+        toIfStatement(node, traversal)
+        break
+      default: {
+      }
     }
+  })
 
-    function toIfStatement(node: Node<ts.Node>, _traversal: ForEachDescendantTraversalControl) {
-        const ifStatementNode = node.asKindOrThrow(SyntaxKind.IfStatement);
-        const expressionNode = getExpression(ifStatementNode);
-        getPropertyAssignmentType(scope, expressionNode);
-    }
+  return {
+    ...params,
+    attributeData: {},
+    getParamsType: () => scope.paramsMap,
+    getReturnType: getFunctionReturnType,
+    getParasmsList: () => scope.getParasmsList(),
+    getLocalVariables: () => scope.getLocalVariables(),
+  }
 
-    function toCallExpression(node: Node<ts.Node>) {
-        const callExpression = node.asKindOrThrow(SyntaxKind.CallExpression);
-        const expression  = getExpression(callExpression);
-        const propertyAccessExpression = expression.asKindOrThrow(SyntaxKind.PropertyAccessExpression);
-        const methodName = propertyAccessExpression.getName();
-        switch (methodName) {
-            case "map":
-            case "forEach":
-                const firstArrowFunction = callExpression.getArguments().at(0)?.asKindOrThrow(SyntaxKind.ArrowFunction);
-                if (firstArrowFunction) {
-                    const firstParamName = firstArrowFunction.getParameters()[0]?.getName();
-                    const funParamsType = parseFunctionBody(firstArrowFunction, scope)?.getParamsType();
-                    const arrowFunctionPropsType = funParamsType[firstParamName!];
+  function toVariableDeclaration(
+    node: Node<ts.Node>,
+    traversal: ForEachDescendantTraversalControl,
+  ) {
+    const varDecl = node.asKindOrThrow(SyntaxKind.VariableDeclaration)
+    const nameNode = varDecl.getNameNode()
 
-                    getVariablePropertyValue(
-                        scope,
-                        getPropertyAccessList(getExpression(expression))
-                    )?.combine(
-                        createVariable(
-                            new ArrayType(arrowFunctionPropsType?.currentType)
-                        )
-                    )
-                }
-                break
+    switch (nameNode.getKind()) {
+      // 对象解构：例如 const { name, data } = props;
+      case SyntaxKind.ObjectBindingPattern: {
+        const bindingPattern = nameNode.asKindOrThrow(
+          SyntaxKind.ObjectBindingPattern,
+        )
+        const initializer = varDecl.getInitializerOrThrow()
+        inferObjectBindingPatternType(
+          scope,
+          bindingPattern,
+          getInferenceType(scope, initializer, traversal)!,
+          traversal,
+        )
+        break
+      }
+      // 数组解构
+      case SyntaxKind.ArrayBindingPattern: {
+        const bindingPattern = nameNode.asKindOrThrow(
+          SyntaxKind.ArrayBindingPattern,
+        )
+        const initializer = varDecl.getInitializerOrThrow()
+        inferArrayBindingPattern(
+          scope,
+          bindingPattern,
+          getInferenceType(scope, initializer, traversal)!,
+          traversal,
+        )
+        break
+      }
+      // 简单别名赋值：例如 const copyProps = props;
+      case SyntaxKind.Identifier:
+        const initializer = varDecl.getInitializer()
+        const newType = createVariable()
+        scope.createLocalVariable(nameNode.getText(), newType)
+        if (!initializer) return
+        const rhsType = getInferenceType(scope, initializer, traversal)
+        if (rhsType) {
+          // 循环引用
+          newType.combine(rhsType)
         }
 
+        break
     }
+  }
 
-    function toReturnStatement(node: Node<ts.Node>, traversal: ForEachDescendantTraversalControl) {
-        const returnNode = node.asKindOrThrow(SyntaxKind.ReturnStatement);
-        // 是当前函数的返回语句
-        if (returnStatement === returnNode) {
-            const expression = getExpression(returnNode);
-            setReturnStatementType(getInferenceType(scope, expression, traversal)!);
-        }
+  function toBinaryExpression(
+    node: Node<ts.Node>,
+    traversal: ForEachDescendantTraversalControl,
+  ) {
+    const binExp = node.asKindOrThrow(SyntaxKind.BinaryExpression)
+    if (binExp.getOperatorToken().getKind() === SyntaxKind.EqualsToken) {
+      const leftType = getInferenceType(scope, binExp.getLeft(), traversal)!
+      const rightType = getInferenceType(scope, binExp.getRight(), traversal)
+      leftType.combine(rightType!)
     }
-    
-    function getFunctionReturnType() {
-        // 箭头函数
-        if (Node.isArrowFunction(funNode)) {
-            const eqGtToken = funNode.getEqualsGreaterThan();
-            const nextNode = eqGtToken.getNextSibling()!;
-            // 函数显示返回类型
-            if (Node.isBlock(nextNode)) {
-                return returnStatementType.current;
-            }
+  }
 
-            return getPropertyAssignmentType(scope, unwrapParentheses(nextNode));
+  function toIfStatement(
+    node: Node<ts.Node>,
+    _traversal: ForEachDescendantTraversalControl,
+  ) {
+    const ifStatementNode = node.asKindOrThrow(SyntaxKind.IfStatement)
+    const expressionNode = getExpression(ifStatementNode)
+    getPropertyAssignmentType(scope, expressionNode)
+  }
+
+  function toCallExpression(node: Node<ts.Node>) {
+    const callExpression = node.asKindOrThrow(SyntaxKind.CallExpression)
+    const expression = getExpression(callExpression)
+    const propertyAccessExpression = expression.asKindOrThrow(
+      SyntaxKind.PropertyAccessExpression,
+    )
+    const methodName = propertyAccessExpression.getName()
+    switch (methodName) {
+      case 'map':
+      case 'forEach':
+        const firstArrowFunction = callExpression
+          .getArguments()
+          .at(0)
+          ?.asKindOrThrow(SyntaxKind.ArrowFunction)
+        if (firstArrowFunction) {
+          const firstParamName = firstArrowFunction
+            .getParameters()[0]
+            ?.getName()
+          const funParamsType = parseFunctionBody(
+            firstArrowFunction,
+            scope,
+          )?.getParamsType()
+          const arrowFunctionPropsType = funParamsType[firstParamName!]
+
+          getVariablePropertyValue(
+            scope,
+            getPropertyAccessList(getExpression(expression)),
+          )?.combine(
+            createVariable(new ArrayType(arrowFunctionPropsType?.currentType)),
+          )
         }
-        // 普通函数
-        else {
-            return returnStatementType.current;
-        }
+        break
     }
+  }
+
+  function toReturnStatement(
+    node: Node<ts.Node>,
+    traversal: ForEachDescendantTraversalControl,
+  ) {
+    const returnNode = node.asKindOrThrow(SyntaxKind.ReturnStatement)
+    // 是当前函数的返回语句
+    if (returnStatement === returnNode) {
+      const expression = getExpression(returnNode)
+      setReturnStatementType(getInferenceType(scope, expression, traversal)!)
+    }
+  }
+
+  function getFunctionReturnType() {
+    // 箭头函数
+    if (Node.isArrowFunction(funNode)) {
+      const eqGtToken = funNode.getEqualsGreaterThan()
+      const nextNode = eqGtToken.getNextSibling()!
+      // 函数显示返回类型
+      if (Node.isBlock(nextNode)) {
+        return returnStatementType.current
+      }
+
+      return getPropertyAssignmentType(scope, unwrapParentheses(nextNode))
+    }
+    // 普通函数
+    else {
+      return returnStatementType.current
+    }
+  }
 }
 
 export async function inferFunctionType(
-    sourceStr: string,
-    targetFuncName: string
+  sourceStr: string,
+  targetFuncName: string,
 ) {
-    const project = new Project();
-    const sourceFile = project.createSourceFile("temp.ts", sourceStr);
-    const GlobalScope = createScope();
-    return parseFunctionBody(
-        getFunction(sourceFile, targetFuncName),
-        GlobalScope
-    );
+  const project = new Project()
+  const sourceFile = project.createSourceFile('temp.ts', sourceStr)
+  const GlobalScope = createScope()
+  return parseFunctionBody(getFunction(sourceFile, targetFuncName), GlobalScope)
 }
 
-
-inferFunctionType(`
+inferFunctionType(
+  `
     function dd(props) {
         let aa, jk = 1;
                 if (aa === 2) {
@@ -202,4 +239,6 @@ inferFunctionType(`
                 }
                 else if (aa === "ss") {}
     }
-    `, 'dd');
+    `,
+  'dd',
+)

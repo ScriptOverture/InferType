@@ -8,10 +8,20 @@
   "scripts": {
     "dev": "bun run main.ts",
     "test": "bun test",
-    "debug": "bun --inspect-wait=localhost:6499/ main.ts"
+    "debug": "bun --inspect-wait=localhost:6499/ main.ts",
+    "check:ts": "tsc --noEmit",
+    "check:lint": "eslint lib"
   },
   "devDependencies": {
+    "@eslint/js": "^9.26.0",
     "@types/bun": "latest",
-    "ts-morph": "^25.0.1"
+    "@types/eslint": "^9.6.1",
+    "@typescript-eslint/eslint-plugin": "^8.32.0",
+    "@typescript-eslint/parser": "^8.32.0",
+    "eslint": "^9.26.0",
+    "globals": "^16.1.0",
+    "prettier": "^3.5.3",
+    "ts-morph": "^25.0.1",
+    "typescript-eslint": "^8.32.0"
   }
 }
