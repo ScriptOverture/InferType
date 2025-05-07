@@ -1,41 +1,43 @@
 import {
+    type ArrayBindingPattern,
+    type BinaryExpression,
+    type ConditionalExpression,
+    type ElementAccessExpression,
     Expression,
+    type ExpressionedNode,
+    type ForEachDescendantTraversalControl,
+    type FunctionDeclaration,
+    type FunctionExpression,
     Node,
+    type ObjectBindingPattern,
+    type ObjectLiteralExpression,
     ParameterDeclaration,
     PropertyAccessExpression,
-    SyntaxKind,
     type SourceFile,
-    type FunctionExpression,
-    type FunctionDeclaration,
-    type ForEachDescendantTraversalControl,
-    type ConditionalExpression,
-    type ts,
-    type ExpressionedNode,
-    type BinaryExpression,
-    type ObjectBindingPattern,
-    type ArrayBindingPattern,
-    type ElementAccessExpression,
-    type ObjectLiteralExpression,
+    SyntaxKind,
+    ts,
+    type Type,
 } from "ts-morph";
 import {
     AnyType,
-    BooleanType,
-    NumberType,
-    StringType,
-    ObjectType,
-    UnionType,
     ArrayType,
-    TupleType,
     BasicType,
+    BooleanType,
     FunctionType,
-    isBasicType,
-    isTupleType,
     isArrayType,
-    isObjectType
+    isBasicType,
+    isObjectType,
+    isTupleType,
+    NumberType,
+    ObjectType,
+    StringType,
+    TupleType,
+    UnionType
 } from "../lib/NodeType.ts";
-import { createVariable, type Variable } from "../lib/variable.ts";
-import type { Scope } from "../lib/scope.ts";
-import { parseFunctionBody } from "../main.ts"
+import {createVariable, type Variable} from "../lib/variable.ts";
+import type {Scope} from "../lib/scope.ts";
+import {parseFunctionBody} from "../main.ts"
+import TypeFlags = ts.TypeFlags;
 
 
 type Paramter = Record<string, Variable>;
@@ -419,19 +421,29 @@ function inferBinaryExpressionType(scope: Scope, node: BinaryExpression): Variab
     const operatorToken = node.getOperatorToken();
 
     switch (operatorToken.getKind()) {
-        case SyntaxKind.EqualsEqualsEqualsToken: // ===
-        case SyntaxKind.EqualsEqualsToken: // ==
-        case SyntaxKind.EqualsToken: // =
+        case SyntaxKind.EqualsEqualsEqualsToken:        // ===
+        case SyntaxKind.EqualsEqualsToken:              // ==
+        case SyntaxKind.EqualsToken:                    // =
             return assignment(
                 scope,
                 leftToken,
                 rightToken,
             );
-        case SyntaxKind.BarBarToken:  // ||
+        case SyntaxKind.BarBarToken:                      // ||
             const v = createVariable();
             v.combine(getPropertyAssignmentType(scope, leftToken)!)
             v.combine(getPropertyAssignmentType(scope, rightToken)!)
             return v;
+        case SyntaxKind.PlusToken:                         // +
+        case SyntaxKind.MinusToken:                        // -
+        case SyntaxKind.AsteriskToken:                     // *
+        case SyntaxKind.SlashToken:                        // /
+        case SyntaxKind.AsteriskAsteriskToken:             // **
+            /**
+             * 使用默认推导类型
+             */
+            const defaultType = node.getType();
+            return createVariable(tsTypeToBasicType(defaultType))
     }
 }
 
@@ -604,4 +616,20 @@ export function uniqueBaseType(types: BasicType[]): BasicType[] {
 // 获取关键字符 '"x"' => 'x'
 export function getIdentifierStr(n: string): string {
     return n.replace(/['\\"]+/g, '')
+}
+
+
+function tsTypeToBasicType(type: Type) {
+    switch (type.getFlags()) {
+        case ts.TypeFlags.String:
+             return new StringType();
+        case TypeFlags.Boolean:
+            return new BooleanType();
+        case TypeFlags.Number:
+            return new NumberType();
+        case TypeFlags.Any:
+            return new AnyType();
+        default:
+            return new AnyType();
+    }
 }
