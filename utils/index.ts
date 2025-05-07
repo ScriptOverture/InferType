@@ -29,7 +29,8 @@ import {
     FunctionType,
     isBasicType,
     isTupleType,
-    isArrayType
+    isArrayType,
+    isObjectType
 } from "../lib/NodeType.ts";
 import { createVariable, type Variable } from "../lib/variable.ts";
 import type { Scope } from "../lib/scope.ts";
@@ -287,13 +288,29 @@ function inferElementAccessExpression(scope: Scope, node: ElementAccessExpressio
             result = createVariable(new UnionType(expressionType.elementsType.map(getVariableToBasicType)));
         }
         else {
-            const expressionTokenIndex = argExprNode?.getText()!;
+            const expressionTokenIndex = argExprNode.getText()!;
             resultVariable = expressionType.getIndexType(expressionTokenIndex);
         }
 
         if (resultVariable) {
             result = getBasicTypeToVariable(resultVariable);
         }
+    }
+    // 对象索引类型
+    else if (isObjectType(expressionType)) {
+        const argExprNode = node.getArgumentExpression()!;
+        /**
+         * 动态索引
+         */
+        let expressionTokenKey;
+        if (Node.isIdentifier(argExprNode)) {
+            expressionTokenKey = getIdentifierStr(argExprNode.getType().getText());
+        }
+        else {
+            expressionTokenKey = getIdentifierStr(argExprNode.getText()!);
+        }
+
+        result = getBasicTypeToVariable(expressionType.get(expressionTokenKey)!);
     }
 
     return result;
@@ -540,8 +557,7 @@ export function getFunction(sourceFile: SourceFile, targetFuncName: string) {
         // 获取变量声明（即函数表达式所在的位置）
         const variableDeclaration = sourceFile.getVariableDeclaration(targetFuncName);
         const initializer = variableDeclaration?.getInitializer();
-        const funParams = variableDeclaration?.getInitializerIfKind(initializer?.getKind()! as SyntaxKind.FunctionExpression)!;
-        iFunction = funParams;
+        iFunction = variableDeclaration?.getInitializerIfKind(initializer?.getKind()! as SyntaxKind.FunctionExpression)!;
     }
     return iFunction;
 }
@@ -557,4 +573,10 @@ export function uniqueBaseType(types: BasicType[]): BasicType[] {
     })
 
     return result
+}
+
+
+// 获取关键字符 '"x"' => 'x'
+export function getIdentifierStr(n: string): string {
+    return n.replace(/['\\"]+/g, '')
 }

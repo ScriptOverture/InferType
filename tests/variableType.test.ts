@@ -280,4 +280,31 @@ describe("函数scope变量类型", () => {
         expect(localVar['jk']?.currentType?.toString()).toBe('number | string');
         expect(localVar['a']?.currentType?.toString()).toBe('number | string');
     });
+
+    test("对象类型索引key推断", () => {
+        const sourceFile = project.createSourceFile(`${getUuid()}.ts`, `
+            const test = () => {
+                let oo = [1,2,3,4]; 
+                const obj = {
+                    a: 'xxx',
+                    h: oo
+                }
+                obj.bb = 1;
+                const i = 'h';
+                let a1 = obj['bb'];
+                let a2 = obj['a'];
+                let a3 = obj[i];
+            }
+        `);
+
+        const GlobalScope = createScope();
+        const fn = getFunction(sourceFile, "test")!;
+        const {
+            getLocalVariables
+        } = parseFunctionBody(fn, GlobalScope);
+        const localVar = getLocalVariables();
+        expect(localVar['a1']?.currentType?.toString()).toBe('number');
+        expect(localVar['a2']?.currentType?.toString()).toBe('string');
+        expect(localVar['a3']?.currentType?.toString()).toBe('number[]');
+    });
 });
