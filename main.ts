@@ -9,10 +9,9 @@ import {
     getExpression,
     unwrapParentheses,
     inferObjectBindingPatternType,
-    uniqueBaseType,
     inferArrayBindingPattern
 } from './utils';
-import { ArrayType, NumberType, StringType } from "./lib/NodeType";
+import { ArrayType } from "./lib/NodeType";
 import { createScope, type Scope } from "./lib/scope";
 import { createVariable,  type Variable } from './lib/variable';
 
@@ -119,7 +118,7 @@ export function parseFunctionBody(
         }
     }
 
-    function toIfStatement(node: Node<ts.Node>, traversal: ForEachDescendantTraversalControl) {
+    function toIfStatement(node: Node<ts.Node>, _traversal: ForEachDescendantTraversalControl) {
         const ifStatementNode = node.asKindOrThrow(SyntaxKind.IfStatement);
         const expressionNode = getExpression(ifStatementNode);
         getPropertyAssignmentType(scope, expressionNode);
@@ -195,21 +194,12 @@ export async function inferFunctionType(
 }
 
 
-const data = inferFunctionType(`
+inferFunctionType(`
     function dd(props) {
-        let a;
-                if (a === 2) {
-                
+        let aa, jk = 1;
+                if (aa === 2) {
+                    jk = "999"
                 }
-                else if (a === "ss") {}
+                else if (aa === "ss") {}
     }
     `, 'dd');
-
-    function dd(props) {
-        const d = () => ({
-            name: '1',
-            age: 1
-        });
-
-        const dd = () => 1;
-    }

@@ -14,7 +14,8 @@ import {
     type BinaryExpression,
     type ObjectBindingPattern,
     type ArrayBindingPattern,
-    type ElementAccessExpression
+    type ElementAccessExpression,
+    type ObjectLiteralExpression,
 } from "ts-morph";
 import {
     AnyType,
@@ -175,17 +176,7 @@ export function getPropertyAssignmentType(scope: Scope, iType: Expression): Vari
     switch (iType.getKind()) {
         // 对象
         case SyntaxKind.ObjectLiteralExpression:
-            const node = iType.asKindOrThrow(SyntaxKind.ObjectLiteralExpression);
-            const newObjType: Record<string, Variable> = {};
-            for (const propertyNode of node.getProperties()) {
-                const property = propertyNode?.asKindOrThrow(SyntaxKind.PropertyAssignment)!;
-                const propertyName = property.getName();
-                const initializer = property.getInitializer();
-                newObjType[propertyName] = getPropertyAssignmentType(scope, initializer!)!;
-            }
-            result = createVariable(
-                new ObjectType(newObjType)
-            );
+            result = inferObjectLiteralExpression(scope, iType.asKindOrThrow(SyntaxKind.ObjectLiteralExpression));
             break;
         // 变量
         case SyntaxKind.Identifier:
@@ -261,6 +252,20 @@ export function getPropertyAssignmentType(scope: Scope, iType: Expression): Vari
     }
 
     return result;
+}
+
+
+function inferObjectLiteralExpression(scope: Scope, node: ObjectLiteralExpression): Variable {
+    const newObjType: Record<string, Variable> = {};
+    for (const propertyNode of node.getProperties()) {
+        const property = propertyNode?.asKindOrThrow(SyntaxKind.PropertyAssignment)!;
+        const propertyName = property.getName();
+        const initializer = property.getInitializer();
+        newObjType[propertyName] = getPropertyAssignmentType(scope, initializer!)!;
+    }
+    return createVariable(
+        new ObjectType(newObjType)
+    );
 }
 
 /**
@@ -407,10 +412,31 @@ export function inferArrayBindingPattern(
     });
 }
 
-// 推断连续赋值情况类型
-function inferBinaryExpressionType(scope: Scope, node: BinaryExpression): Variable {
+// 操作符推断
+function inferBinaryExpressionType(scope: Scope, node: BinaryExpression): Variable | undefined {
     const leftToken = node.getLeft();
     const rightToken = node.getRight();
+    const operatorToken = node.getOperatorToken();
+
+    switch (operatorToken.getKind()) {
+        case SyntaxKind.EqualsEqualsEqualsToken: // ===
+        case SyntaxKind.EqualsEqualsToken: // ==
+        case SyntaxKind.EqualsToken: // =
+            return assignment(
+                scope,
+                leftToken,
+                rightToken,
+            );
+        case SyntaxKind.BarBarToken:  // ||
+            const v = createVariable();
+            v.combine(getPropertyAssignmentType(scope, leftToken)!)
+            v.combine(getPropertyAssignmentType(scope, rightToken)!)
+            return v;
+    }
+}
+
+// 推断连续赋值情况类型
+function assignment(scope: Scope, leftToken: Expression , rightToken: Expression): Variable {
     let leftVariable = getPropertyAssignmentType(scope, leftToken);
     // 未匹配则创建作用域变量
     if (!leftVariable) {
@@ -422,7 +448,7 @@ function inferBinaryExpressionType(scope: Scope, node: BinaryExpression): Variab
      */
     let resultType;
     if (Node.isBinaryExpression(rightToken)) {
-        resultType = inferBinaryExpressionType(scope, rightToken);
+        resultType = inferBinaryExpressionType(scope, rightToken)!;
         leftVariable.combine(resultType)
     }
     else {
@@ -432,7 +458,6 @@ function inferBinaryExpressionType(scope: Scope, node: BinaryExpression): Variab
 
     return resultType!;
 }
-
 
 // 获取 whenTrue 和 whenFalse 的联合类型
 function inferConditionalExpressionType(scope: Scope, node: ConditionalExpression): Variable {

@@ -307,4 +307,21 @@ describe("函数scope变量类型", () => {
         expect(localVar['a2']?.currentType?.toString()).toBe('string');
         expect(localVar['a3']?.currentType?.toString()).toBe('number[]');
     });
+
+    test("操作符或 ||", () => {
+        const sourceFile = project.createSourceFile(`${getUuid()}.ts`, `
+            const test = () => {
+                let oo = [1,2,3,4];
+                let b = oo || true; 
+            }
+        `);
+
+        const GlobalScope = createScope();
+        const fn = getFunction(sourceFile, "test")!;
+        const {
+            getLocalVariables
+        } = parseFunctionBody(fn, GlobalScope);
+        const localVar = getLocalVariables();
+        expect(localVar['b']?.currentType?.toString()).toBe('number[] | boolean');
+    });
 });
