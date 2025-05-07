@@ -33,7 +33,7 @@ jobs:
         run: bun install
 
       - name: Code formatting check
-        run: bun run prettier --check .
+        run: bun run check:fmt
 
       - name: Code Lint check
         run: bun run check:lint

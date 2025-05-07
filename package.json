@@ -10,7 +10,8 @@
     "test": "bun test",
     "debug": "bun --inspect-wait=localhost:6499/ main.ts",
     "check:ts": "tsc --noEmit",
-    "check:lint": "eslint lib"
+    "check:lint": "eslint lib",
+    "check:fmt": "bun run prettier --check ."
   },
   "devDependencies": {
     "@eslint/js": "^9.26.0",
