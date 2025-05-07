@@ -235,3 +235,7 @@ export function isNumberType(type: BasicType): type is NumberType {
 export function isTupleType(type: BasicType): type is TupleType {
     return type instanceof TupleType;
 }
+
+export function isArrayType(type: BasicType): type is ArrayType {
+    return type instanceof ArrayType;
+}

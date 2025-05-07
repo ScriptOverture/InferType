@@ -13,7 +13,8 @@ import {
     type ExpressionedNode,
     type BinaryExpression,
     type ObjectBindingPattern,
-    type ArrayBindingPattern
+    type ArrayBindingPattern,
+    type ElementAccessExpression
 } from "ts-morph";
 import {
     AnyType,
@@ -27,7 +28,8 @@ import {
     BasicType,
     FunctionType,
     isBasicType,
-    isTupleType
+    isTupleType,
+    isArrayType
 } from "../lib/NodeType.ts";
 import { createVariable, type Variable } from "../lib/variable.ts";
 import type { Scope } from "../lib/scope.ts";
@@ -249,15 +251,7 @@ export function getPropertyAssignmentType(scope: Scope, iType: Expression): Vari
             break;
         // 元素访问 | list[index]
         case SyntaxKind.ElementAccessExpression:
-            const elementAccessExpressionNode = iType.asKindOrThrow(SyntaxKind.ElementAccessExpression);
-            const targetExpressionToken = getExpression(elementAccessExpressionNode);
-            const expressionVariable = getPropertyAssignmentType(scope, targetExpressionToken);
-            if (!expressionVariable || !isTupleType(expressionVariable.currentType!)) return;
-            const expressionTokenIndex = elementAccessExpressionNode.getArgumentExpression()?.getText()!;
-            const resultVariable = expressionVariable.currentType.getIndexType(expressionTokenIndex);
-            if (resultVariable) {
-                result = getBasicTypeToVariable(resultVariable)
-            }
+            result = inferElementAccessExpression(scope, iType.asKindOrThrow(SyntaxKind.ElementAccessExpression));
             break;
         // 兜底推断类型
         default:
@@ -267,6 +261,44 @@ export function getPropertyAssignmentType(scope: Scope, iType: Expression): Vari
 
     return result;
 }
+
+/**
+ * 推断原始数组及索引类型
+ * @param scope
+ * @param node
+ */
+function inferElementAccessExpression(scope: Scope, node: ElementAccessExpression): Variable | undefined {
+    const targetExpressionToken = getExpression(node);
+    const expressionVariable = getPropertyAssignmentType(scope, targetExpressionToken);
+    if (!expressionVariable) return;
+    let expressionType = expressionVariable.currentType!, result;
+    // 数组类型
+    if (isArrayType(expressionType)) {
+        result = getBasicTypeToVariable(expressionType.elementType);
+    }
+    // 元组类型
+    else if (isTupleType(expressionType)) {
+        const argExprNode = node.getArgumentExpression()!;
+        /**
+         * 动态索引
+         */
+        let resultVariable;
+        if (Node.isIdentifier(argExprNode)) {
+            result = createVariable(new UnionType(expressionType.elementsType.map(getVariableToBasicType)));
+        }
+        else {
+            const expressionTokenIndex = argExprNode?.getText()!;
+            resultVariable = expressionType.getIndexType(expressionTokenIndex);
+        }
+
+        if (resultVariable) {
+            result = getBasicTypeToVariable(resultVariable);
+        }
+    }
+
+    return result;
+}
+
 
 /**
  * 推断解构对象

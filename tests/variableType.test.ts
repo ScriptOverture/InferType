@@ -236,6 +236,30 @@ describe("函数scope变量类型", () => {
         expect(localVar['q3']?.currentType?.toString()).toBe('() => number[]');
     });
 
+    test("动态数组索引类型", () => {
+        const sourceFile = project.createSourceFile(`${getUuid()}.ts`, `
+            const test = () => {
+                const target = [1,2,3,4];
+                let index = 0;
+                let l1 = target[index];
+                const target2 = [
+        1,
+        "asd",
+        () => [1,2,3],
+     ];
+        let l2 = target2[index];
+        `);
+
+        const GlobalScope = createScope();
+        const fn = getFunction(sourceFile, "test")!;
+        const {
+            getLocalVariables
+        } = parseFunctionBody(fn, GlobalScope);
+        const localVar = getLocalVariables();
+        expect(localVar['l1']?.currentType?.toString()).toBe('number');
+        expect(localVar['l2']?.currentType?.toString()).toBe('number | string | () => number[]');
+    });
+
     test("if 判断类型推断", () => {
         const sourceFile = project.createSourceFile(`${getUuid()}.ts`, `
             const test = () => {
