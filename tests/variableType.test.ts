@@ -235,4 +235,25 @@ describe("函数scope变量类型", () => {
         expect(localVar['q2']?.currentType?.toString()).toBe('string');
         expect(localVar['q3']?.currentType?.toString()).toBe('() => number[]');
     });
+
+    test("if 判断类型推断", () => {
+        const sourceFile = project.createSourceFile(`${getUuid()}.ts`, `
+            const test = () => {
+                let a, jk = 1;
+                if (a === 2) {
+                    jk = "999"
+                }
+                else if (a === "ss") {}
+            }
+        `);
+
+        const GlobalScope = createScope();
+        const fn = getFunction(sourceFile, "test")!;
+        const {
+            getLocalVariables
+        } = parseFunctionBody(fn, GlobalScope);
+        const localVar = getLocalVariables();
+        expect(localVar['jk']?.currentType?.toString()).toBe('number | string');
+        expect(localVar['a']?.currentType?.toString()).toBe('number | string');
+    });
 });

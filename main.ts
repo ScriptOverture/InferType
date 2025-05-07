@@ -48,6 +48,9 @@ export function parseFunctionBody(
             case SyntaxKind.ReturnStatement:
                 toReturnStatement(node, traversal);
                 break;
+            case SyntaxKind.IfStatement:
+                toIfStatement(node, traversal);
+                break;
             default: { };
         }
     });
@@ -116,6 +119,11 @@ export function parseFunctionBody(
         }
     }
 
+    function toIfStatement(node: Node<ts.Node>, traversal: ForEachDescendantTraversalControl) {
+        const ifStatementNode = node.asKindOrThrow(SyntaxKind.IfStatement);
+        const expressionNode = getExpression(ifStatementNode);
+        getPropertyAssignmentType(scope, expressionNode);
+    }
 
     function toCallExpression(node: Node<ts.Node>) {
         const callExpression = node.asKindOrThrow(SyntaxKind.CallExpression);
@@ -189,16 +197,11 @@ export async function inferFunctionType(
 
 const data = inferFunctionType(`
     function dd(props) {
-        const test = () => {
-                const target = [
-        1,
-        "asd",
-        () => [1,2,3],
-     ];
-        
-        let q1 = target['0'];
-        let q2 = target['1'];
-        let q3 = target['2'];
+        let a;
+                if (a === 2) {
+                
+                }
+                else if (a === "ss") {}
     }
     `, 'dd');
 
