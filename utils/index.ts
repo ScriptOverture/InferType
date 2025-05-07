@@ -362,18 +362,26 @@ export function inferArrayBindingPattern(
 function inferBinaryExpressionType(scope: Scope, node: BinaryExpression): Variable {
     const leftToken = node.getLeft();
     const rightToken = node.getRight();
-    const leftVariable = scope.find(leftToken.getText()) || scope.createLocalVariable(leftToken.getText());
+    let leftVariable = getPropertyAssignmentType(scope, leftToken);
+    // 未匹配则创建作用域变量
+    if (!leftVariable) {
+        leftVariable = scope.createLocalVariable(leftToken.getText());
+    }
 
-    //
+    /**
+     * resultType 为最右侧原始类型
+     */
+    let resultType;
     if (Node.isBinaryExpression(rightToken)) {
-        const rightVariableType = inferBinaryExpressionType(scope, rightToken);
-        leftVariable.combine(rightVariableType)
+        resultType = inferBinaryExpressionType(scope, rightToken);
+        leftVariable.combine(resultType)
     }
     else {
-        leftVariable.combine(getPropertyAssignmentType(scope, rightToken)!);
+        resultType = getPropertyAssignmentType(scope, rightToken)!
+        leftVariable.combine(resultType);
     }
 
-    return leftVariable!;
+    return resultType!;
 }
 
 

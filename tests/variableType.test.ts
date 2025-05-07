@@ -130,6 +130,28 @@ describe("函数scope变量类型", () => {
     });
 
 
+    test("连续赋值类型-多个属性x.c.z", () => {
+        const sourceFile = project.createSourceFile(`${getUuid()}.ts`, `
+            const test = () => {
+                const obj = {}
+                obj.kl = 123;
+                let c = obj.kl = obj.ui = "123";
+            }
+        `);
+
+        const GlobalScope = createScope();
+        const fn = getFunction(sourceFile, "test")!;
+        const {
+            getLocalVariables
+        } = parseFunctionBody(fn, GlobalScope);
+        const localVar = getLocalVariables();
+        const objType = localVar['obj']!;
+        expect(objType.get('kl')?.toString()).toBe('number | string');
+        expect(objType.get('ui')?.toString()).toBe('string');
+        expect(localVar['c']?.currentType?.toString()).toBe('string');
+    });
+
+
     test("数据对象解构", () => {
         const sourceFile = project.createSourceFile(`${getUuid()}.ts`, `
             const test = () => {
