@@ -17,6 +17,8 @@ import {
   SyntaxKind,
   ts,
   type Type,
+  type IfStatement,
+  Statement
 } from 'ts-morph'
 import {
   AnyType,
@@ -32,6 +34,7 @@ import {
   ObjectType,
   StringType,
   TupleType,
+  UndefinedType,
   UnionType,
 } from '../lib/NodeType.ts'
 import { createVariable, type Variable } from '../lib/variable.ts'
@@ -521,6 +524,82 @@ function inferConditionalExpressionType(
   )!
 
   return createVariable(new UnionType([whenTrueVariable, whenFalseVariable]))
+}
+
+// 推断if
+export function inferIfStatement(scope: Scope, node: IfStatement): Variable {
+  const exprNode = getExpression(node);
+  const thenStatementNode = node.getThenStatement();
+  const elseStatementNode = node.getElseStatement();
+
+  /**
+   * 推断if条件判断类型
+   */
+  getPropertyAssignmentType(scope, exprNode);
+
+  // 处理 then 和 else 分支的返回类型
+  const left = dfsIfStatementReturnNode(scope, thenStatementNode);
+  const right = elseStatementNode
+    ? dfsIfStatementReturnNode(scope, elseStatementNode)
+    : new UndefinedType(); // 无 else 分支时添加 undefined
+
+  const result = createVariable();
+  result.combine(left);
+  result.combine(right);
+  return result;
+}
+
+/**
+ * 深度遍历解析 if else
+ * @param scope
+ * @param node
+ */
+function dfsIfStatementReturnNode(scope: Scope, node: Statement): Variable {
+  const result = createVariable();
+  if (!node) return result;  // 处理空节点的情况
+
+  // 处理块语句（Block）
+  if (Node.isBlock(node)) {
+    let hasAllPathsReturned = false;
+    const allStatements = node.getStatements();
+    const firstReturn = allStatements.find(Node.isReturnStatement)!;
+    if (firstReturn) {
+      const ifType = getPropertyAssignmentType(scope, getExpression(firstReturn))
+      if (ifType) {
+        result.combine(ifType);
+        hasAllPathsReturned = true;
+      }
+      else {
+        hasAllPathsReturned = false;
+      }
+    }
+
+    for (const stmt of allStatements) {
+      if (Node.isIfStatement(stmt)) {
+        // 递归处理 if 语句，并合并其返回类型
+        const ifType = inferIfStatement(scope, stmt);
+        result.combine(ifType);
+        if (!(ifType.currentType instanceof UndefinedType)) {
+          hasAllPathsReturned = true;
+        }
+      }
+    }
+
+    // 若存在未覆盖的路径，添加 undefined
+    if (!hasAllPathsReturned) {
+      result.combine(new UndefinedType());
+    }
+  }
+  // 处理单个 if 语句
+  else if (Node.isIfStatement(node)) {
+    result.combine(inferIfStatement(scope, node));
+  }
+  // 处理单个 return 语句
+  else if (Node.isReturnStatement(node)) {
+    result.combine(getPropertyAssignmentType(scope, getExpression(node))!);
+  }
+
+  return result;
 }
 
 // 推断类型

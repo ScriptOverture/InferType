@@ -6,12 +6,10 @@ import {
   Project,
   SyntaxKind,
   ts,
-  type ForEachDescendantTraversalControl,
+  type ForEachDescendantTraversalControl
 } from 'ts-morph'
 import {
-  getPropertyAccessList,
   getPropertyAssignmentType,
-  getVariablePropertyValue,
   createRef,
   getFunction,
   getInferenceType,
@@ -19,8 +17,8 @@ import {
   unwrapParentheses,
   inferObjectBindingPatternType,
   inferArrayBindingPattern,
+  inferIfStatement,
 } from './utils'
-import { ArrayType } from './lib/NodeType'
 import { createScope, type Scope } from './lib/scope'
 import { createVariable, type Variable } from './lib/variable'
 
@@ -34,7 +32,10 @@ export function parseFunctionBody(
     | FunctionDeclaration
   const { params, body, returnStatement } = getFunction()
   const scope = createScope(params, {}, scopePrototype)
-  const [returnStatementType, setReturnStatementType] = createRef<Variable>()
+  const [returnStatementType, setReturnStatementType] = createRef<Variable>(createVariable());
+  const [bodyCacheRecord, setBodyCacheRecord] = createRef({
+    firstParseIfStatement: true,
+  })
   function getFunction() {
     return {
       body: iFunction!.getBody(),
@@ -65,7 +66,7 @@ export function parseFunctionBody(
         toReturnStatement(node, traversal)
         break
       case SyntaxKind.IfStatement:
-        toIfStatement(node, traversal)
+        toIfStatement(node)
         break
       default: {
       }
@@ -118,7 +119,7 @@ export function parseFunctionBody(
         break
       }
       // 简单别名赋值：例如 const copyProps = props;
-      case SyntaxKind.Identifier:
+      case SyntaxKind.Identifier: {
         const initializer = varDecl.getInitializer()
         const newType = createVariable()
         scope.createLocalVariable(nameNode.getText(), newType)
@@ -130,6 +131,7 @@ export function parseFunctionBody(
         }
 
         break
+      }
     }
   }
 
@@ -146,47 +148,48 @@ export function parseFunctionBody(
   }
 
   function toIfStatement(
-    node: Node<ts.Node>,
-    _traversal: ForEachDescendantTraversalControl,
+    node: Node<ts.Node>
   ) {
-    const ifStatementNode = node.asKindOrThrow(SyntaxKind.IfStatement)
-    const expressionNode = getExpression(ifStatementNode)
-    getPropertyAssignmentType(scope, expressionNode)
+    if (bodyCacheRecord.current?.firstParseIfStatement) {
+      const allReturn = inferIfStatement(scope, node.asKindOrThrow(SyntaxKind.IfStatement));
+      setReturnStatementType(prev => prev.combine(allReturn))
+      setBodyCacheRecord(el => ({ ...el, firstParseIfStatement: false }));
+    }
   }
 
   function toCallExpression(node: Node<ts.Node>) {
-    const callExpression = node.asKindOrThrow(SyntaxKind.CallExpression)
-    const expression = getExpression(callExpression)
-    const propertyAccessExpression = expression.asKindOrThrow(
-      SyntaxKind.PropertyAccessExpression,
-    )
-    const methodName = propertyAccessExpression.getName()
-    switch (methodName) {
-      case 'map':
-      case 'forEach':
-        const firstArrowFunction = callExpression
-          .getArguments()
-          .at(0)
-          ?.asKindOrThrow(SyntaxKind.ArrowFunction)
-        if (firstArrowFunction) {
-          const firstParamName = firstArrowFunction
-            .getParameters()[0]
-            ?.getName()
-          const funParamsType = parseFunctionBody(
-            firstArrowFunction,
-            scope,
-          )?.getParamsType()
-          const arrowFunctionPropsType = funParamsType[firstParamName!]
-
-          getVariablePropertyValue(
-            scope,
-            getPropertyAccessList(getExpression(expression)),
-          )?.combine(
-            createVariable(new ArrayType(arrowFunctionPropsType?.currentType)),
-          )
-        }
-        break
-    }
+    // const callExpression = node.asKindOrThrow(SyntaxKind.CallExpression)
+    // const expression = getExpression(callExpression)
+    // const propertyAccessExpression = expression.asKindOrThrow(
+    //   SyntaxKind.PropertyAccessExpression,
+    // )
+    // const methodName = propertyAccessExpression.getName()
+    // switch (methodName) {
+    //   case 'map':
+    //   case 'forEach':
+    //     const firstArrowFunction = callExpression
+    //       .getArguments()
+    //       .at(0)
+    //       ?.asKindOrThrow(SyntaxKind.ArrowFunction)
+    //     if (firstArrowFunction) {
+    //       const firstParamName = firstArrowFunction
+    //         .getParameters()[0]
+    //         ?.getName()
+    //       const funParamsType = parseFunctionBody(
+    //         firstArrowFunction,
+    //         scope,
+    //       )?.getParamsType()
+    //       const arrowFunctionPropsType = funParamsType[firstParamName!]
+    //
+    //       getVariablePropertyValue(
+    //         scope,
+    //         getPropertyAccessList(getExpression(expression)),
+    //       )?.combine(
+    //         createVariable(new ArrayType(arrowFunctionPropsType?.currentType)),
+    //       )
+    //     }
+    //     break
+    // }
   }
 
   function toReturnStatement(
@@ -197,7 +200,7 @@ export function parseFunctionBody(
     // 是当前函数的返回语句
     if (returnStatement === returnNode) {
       const expression = getExpression(returnNode)
-      setReturnStatementType(getInferenceType(scope, expression, traversal)!)
+      setReturnStatementType(prev => prev.combine(getInferenceType(scope, expression, traversal)!))
     }
   }
 
@@ -220,7 +223,7 @@ export function parseFunctionBody(
   }
 }
 
-export async function inferFunctionType(
+export function inferFunctionType(
   sourceStr: string,
   targetFuncName: string,
 ) {
@@ -230,15 +233,14 @@ export async function inferFunctionType(
   return parseFunctionBody(getFunction(sourceFile, targetFuncName), GlobalScope)
 }
 
-inferFunctionType(
+const body = inferFunctionType(
   `
-    function dd(props) {
-        let aa, jk = 1;
-                if (aa === 2) {
-                    jk = "999"
-                }
-                else if (aa === "ss") {}
-    }
-    `,
-  'dd',
+            const fn = () => {
+                  if (1) {
+                    return 1;
+                  }
+              };
+        `,
+  'fn',
 )
+console.log(body.getReturnType()?.toString(), 'return END')

@@ -1,6 +1,6 @@
 import { expect, test, describe } from 'bun:test'
 import { Project } from 'ts-morph'
-import { parseFunctionBody } from '../main'
+import {inferFunctionType, parseFunctionBody} from '../main'
 import { createScope } from '../lib/scope'
 import { getFunction } from '../utils'
 import {
@@ -9,6 +9,7 @@ import {
   isStringType,
   type ObjectType,
 } from '../lib/NodeType'
+import { getUuid } from './utils'
 
 describe('函数返回值', () => {
   const project = new Project()
@@ -105,5 +106,37 @@ describe('函数返回值', () => {
     ).getReturnType()!
 
     expect(returnType3.currentType?.toString()).toBe('number[]')
+  })
+
+  test('箭头函数if 判断 return返回简单类型', () => {
+    const returnType = inferFunctionType(
+        `
+            const fn = () => {
+                if (1) {
+                  return 1;
+                } else {
+                  return '1'
+                }
+            };
+        `,
+        'fn',
+    ).getReturnType()!;
+
+    expect(returnType.toString()).toBe('number | string')
+  })
+
+  test('箭头函数if 判断 return返回类型推断', () => {
+    const returnType = inferFunctionType(
+        `
+              const fn = () => {
+                  if (1) {
+                    return 1;
+                  }
+              };
+          `,
+        'fn'
+    ).getReturnType()!;
+
+    expect(returnType.toString()).toBe('number | undefined')
   })
 })

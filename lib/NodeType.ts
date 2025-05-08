@@ -15,6 +15,7 @@ export enum AllTypes {
   String = 'string',
   Boolean = 'boolean',
   Number = 'number',
+  Undefined = 'undefined',
   Void = 'void',
 }
 
@@ -25,6 +26,15 @@ export class AnyType extends BasicType {
   }
   combine(other: BasicType): BasicType {
     return other
+  }
+}
+
+export class UndefinedType extends BasicType {
+  toString() {
+    return AllTypes.Undefined;
+  }
+  combine(other: BasicType): BasicType {
+    return new UnionType([this, other])
   }
 }
 
