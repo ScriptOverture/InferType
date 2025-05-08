@@ -200,7 +200,7 @@ export function getPropertyAssignmentType(
       )
       break
     // array
-    case SyntaxKind.ArrayLiteralExpression:
+    case SyntaxKind.ArrayLiteralExpression: {
       const arrayNode = iType.asKindOrThrow(SyntaxKind.ArrayLiteralExpression)
       const arrayElements = arrayNode.getElements()
 
@@ -229,8 +229,9 @@ export function getPropertyAssignmentType(
         result = createVariable(tupleType)
       }
       break
+    }
     // 箭头函数
-    case SyntaxKind.ArrowFunction:
+    case SyntaxKind.ArrowFunction: {
       const functionNode = iType.asKindOrThrow(SyntaxKind.ArrowFunction)
       const inferFunctionResult = parseFunctionBody(functionNode, scope)
       const inferFunctionType = new FunctionType(
@@ -239,20 +240,23 @@ export function getPropertyAssignmentType(
       )
       result = createVariable(inferFunctionType)
       break
+    }
     // n元运算
-    case SyntaxKind.ConditionalExpression:
+    case SyntaxKind.ConditionalExpression: {
       const conditionalNode = iType.asKindOrThrow(
         SyntaxKind.ConditionalExpression,
       )
       result = inferConditionalExpressionType(scope, conditionalNode)
       break
+    }
     // 连续赋值 x = b = c = 1;
-    case SyntaxKind.BinaryExpression:
+    case SyntaxKind.BinaryExpression: {
       const binaryExpressionNode = iType.asKindOrThrow(
         SyntaxKind.BinaryExpression,
       )
       result = inferBinaryExpressionType(scope, binaryExpressionNode)
       break
+    }
     // 括号包裹
     case SyntaxKind.ParenthesizedExpression:
       result = getPropertyAssignmentType(scope, unwrapParentheses(iType))
@@ -302,8 +306,8 @@ function inferElementAccessExpression(
     targetExpressionToken,
   )
   if (!expressionVariable) return
-  let expressionType = expressionVariable.currentType!,
-    result
+  const expressionType = expressionVariable.currentType!;
+  let result;
   // 数组类型
   if (isArrayType(expressionType)) {
     result = getBasicTypeToVariable(expressionType.elementType)
@@ -447,24 +451,29 @@ function inferBinaryExpressionType(
 
   switch (operatorToken.getKind()) {
     case SyntaxKind.EqualsEqualsEqualsToken: // ===
-    case SyntaxKind.EqualsEqualsToken: // ==
+    case SyntaxKind.EqualsEqualsToken: {// ==
+      assignment(scope, leftToken, rightToken);
+      return createVariable(new BooleanType());
+    }
     case SyntaxKind.EqualsToken: // =
       return assignment(scope, leftToken, rightToken)
-    case SyntaxKind.BarBarToken: // ||
+    case SyntaxKind.BarBarToken: { // ||
       const v = createVariable()
       v.combine(getPropertyAssignmentType(scope, leftToken)!)
       v.combine(getPropertyAssignmentType(scope, rightToken)!)
       return v
+    }
     case SyntaxKind.PlusToken: // +
     case SyntaxKind.MinusToken: // -
     case SyntaxKind.AsteriskToken: // *
     case SyntaxKind.SlashToken: // /
-    case SyntaxKind.AsteriskAsteriskToken: // **
+    case SyntaxKind.AsteriskAsteriskToken: { // **
       /**
        * 使用默认推导类型
        */
       const defaultType = node.getType()
       return createVariable(tsTypeToBasicType(defaultType))
+    }
   }
 }
 

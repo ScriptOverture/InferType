@@ -364,4 +364,26 @@ describe('函数scope变量类型', () => {
     expect(localVar['b1']?.currentType?.toString()).toBe('string')
     expect(localVar['b2']?.currentType?.toString()).toBe('number')
   })
+
+  test('操作符等于以及全等推断', () => {
+    const sourceFile = project.createSourceFile(
+      `${getUuid()}.ts`,
+      `
+            const test = () => {
+                const data = 1;
+                const d = data == '1';
+                const d1 = data === '1';
+            }
+        `,
+    )
+
+    const GlobalScope = createScope()
+    const fn = getFunction(sourceFile, 'test')!
+    const { getLocalVariables } = parseFunctionBody(fn, GlobalScope)
+    const localVar = getLocalVariables()
+    expect(localVar['d']?.currentType?.toString()).toBe('boolean')
+    expect(localVar['d1']?.currentType?.toString()).toBe('boolean')
+    // 待后续 const 补充
+    // expect(localVar['data']?.currentType?.toString()).toBe('number | string')
+  })
 })
