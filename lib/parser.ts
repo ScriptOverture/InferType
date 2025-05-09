@@ -14,10 +14,29 @@ import {
   inferIfStatement,
   inferPropertyAssignmentType,
 } from './inference.ts'
-import type { FunctionNode, ParseFunctionBodyResult } from '../types/parser.ts'
+import type {
+  FunctionNode,
+  ParseFunctionBodyResult,
+  FunctionRecord,
+} from '../types/parser.ts'
 import type { Scope } from '../types/scope.ts'
 import type { Variable } from '../types/variable.ts'
 import { getExpression, unwrapParentheses } from '../utils/parameters.ts'
+
+// 获取函数信息
+function getFunctionRecord(iFunction: FunctionNode): FunctionRecord {
+  return {
+    body: iFunction!.getBody(),
+    params: iFunction?.getParameters()!,
+    returnStatement: iFunction
+      ?.getBody()
+      ?.asKind(SyntaxKind.Block)
+      ?.getStatement((node) => node.getKind() === SyntaxKind.ReturnStatement),
+    propertyAccesses: iFunction?.getDescendantsOfKind(
+      SyntaxKind.PropertyAccessExpression,
+    ),
+  }
+}
 
 /**
  * 解析函数
@@ -28,27 +47,13 @@ export function parseFunctionBody(
   funNode: FunctionNode,
   scopePrototype?: Scope,
 ): ParseFunctionBodyResult {
-  const iFunction = funNode as unknown as FunctionNode
-  const { params, body, returnStatement } = getFunction()
+  const { params, body, returnStatement } = getFunctionRecord(funNode)
   const scope = createScope(params, {}, scopePrototype)
   const [returnStatementType, setReturnStatementType] =
     createRef<Variable>(createVariable())
   const [bodyCacheRecord, setBodyCacheRecord] = createRef({
     firstParseIfStatement: true,
   })
-  function getFunction() {
-    return {
-      body: iFunction!.getBody(),
-      params: iFunction?.getParameters()!,
-      returnStatement: iFunction
-        ?.getBody()
-        ?.asKind(SyntaxKind.Block)
-        ?.getStatement((node) => node.getKind() === SyntaxKind.ReturnStatement),
-      propertyAccesses: iFunction?.getDescendantsOfKind(
-        SyntaxKind.PropertyAccessExpression,
-      ),
-    }
-  }
 
   body?.forEachDescendant((node, traversal) => {
     switch (node.getKind()) {
@@ -60,7 +65,7 @@ export function parseFunctionBody(
         toBinaryExpression(node, traversal)
         break
       case SyntaxKind.CallExpression:
-        toCallExpression(node)
+        toCallExpression()
         break
       case SyntaxKind.ReturnStatement:
         toReturnStatement(node, traversal)
@@ -68,8 +73,6 @@ export function parseFunctionBody(
       case SyntaxKind.IfStatement:
         toIfStatement(node)
         break
-      default: {
-      }
     }
   })
 

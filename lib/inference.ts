@@ -37,7 +37,7 @@ import {
 import { createScope } from './scope.ts'
 import {
   getExpression,
-  getFunctionRecord,
+  getFunctionExpression,
   getPropertyAccessList,
   getVariablePropertyValue,
   unwrapParentheses,
@@ -420,6 +420,7 @@ export function inferArrayBindingPattern(
   if (!TypeMatch.isTupleType(initializerVariable.currentType!)) return
   const targetTuple = initializerVariable.currentType
   node.getElements().forEach((elem, index) => {
+    if (Node.isOmittedExpression(elem)) return
     const originName = elem.getName()
     // 默认值
     const initializer = elem.getInitializer()
@@ -503,7 +504,7 @@ export function inferFunctionType(sourceStr: string, targetFuncName: string) {
   const sourceFile = project.createSourceFile('temp.ts', sourceStr)
   const GlobalScope = createScope()
   return parseFunctionBody(
-    getFunctionRecord(sourceFile, targetFuncName),
+    getFunctionExpression(sourceFile, targetFuncName),
     GlobalScope,
   )
 }

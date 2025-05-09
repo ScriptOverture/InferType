@@ -137,7 +137,7 @@ export function unwrapParentheses(node: Node): Expression {
   return current as Expression
 }
 
-export function getFunctionRecord(
+export function getFunctionExpression(
   sourceFile: SourceFile,
   targetFuncName: string,
 ) {

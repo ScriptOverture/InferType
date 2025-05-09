@@ -4,7 +4,7 @@ import { parseFunctionBody } from '../lib/parser'
 import { createScope } from '../lib/scope'
 import { TypeMatch } from '../lib/NodeType'
 import { inferFunctionType } from '../lib/inference'
-import { getFunctionRecord } from '../utils/parameters.ts'
+import { getFunctionExpression } from '../utils/parameters.ts'
 
 describe('函数返回值', () => {
   const project = new Project()
@@ -22,7 +22,7 @@ describe('函数返回值', () => {
     )
 
     const GlobalScope = createScope()
-    const fn = getFunctionRecord(sourceFile, 'fn')!
+    const fn = getFunctionExpression(sourceFile, 'fn')!
     const returnType = parseFunctionBody(fn, GlobalScope).getReturnType()!
 
     expect(TypeMatch.isObjectType(returnType)).toBeBoolean()
@@ -43,21 +43,21 @@ describe('函数返回值', () => {
 
     const GlobalScope = createScope()
     const returnType = parseFunctionBody(
-      getFunctionRecord(sourceFile, 'fn')!,
+      getFunctionExpression(sourceFile, 'fn')!,
       GlobalScope,
     ).getReturnType()!
 
     expect(TypeMatch.isStringType(returnType)).toBeBoolean()
 
     const returnType2 = parseFunctionBody(
-      getFunctionRecord(sourceFile, 'fn1')!,
+      getFunctionExpression(sourceFile, 'fn1')!,
       GlobalScope,
     ).getReturnType()!
 
     expect(TypeMatch.isNumberType(returnType2)).toBeBoolean()
 
     const returnType3 = parseFunctionBody(
-      getFunctionRecord(sourceFile, 'fn2')!,
+      getFunctionExpression(sourceFile, 'fn2')!,
       GlobalScope,
     ).getReturnType()!
 
@@ -82,21 +82,21 @@ describe('函数返回值', () => {
 
     const GlobalScope = createScope()
     const returnType = parseFunctionBody(
-      getFunctionRecord(sourceFile, 'fn')!,
+      getFunctionExpression(sourceFile, 'fn')!,
       GlobalScope,
     ).getReturnType()!
 
     expect(TypeMatch.isStringType(returnType)).toBeBoolean()
 
     const returnType2 = parseFunctionBody(
-      getFunctionRecord(sourceFile, 'fn1')!,
+      getFunctionExpression(sourceFile, 'fn1')!,
       GlobalScope,
     ).getReturnType()!
 
     expect(TypeMatch.isNumberType(returnType2)).toBeBoolean()
 
     const returnType3 = parseFunctionBody(
-      getFunctionRecord(sourceFile, 'fn2')!,
+      getFunctionExpression(sourceFile, 'fn2')!,
       GlobalScope,
     ).getReturnType()!
 

@@ -1,6 +1,6 @@
 import type { Variable } from './variable.ts'
 import type { BaseType } from '../lib/NodeType.ts'
-import type { ParasmsItem } from '../utils'
+import type { ParameterItem } from './typeCompatibility.ts'
 
 export type Scope = {
   find(name: string): Variable | undefined
@@ -11,7 +11,7 @@ export type Scope = {
     targetVariable: Variable,
     recordType: Record<string, Variable>,
   ) => void
-  getParamsList: () => ParasmsItem[]
+  getParamsList: () => ParameterItem[]
   getLocalVariables: () => Record<string, Variable>
 }
 

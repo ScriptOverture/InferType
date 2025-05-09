@@ -9,7 +9,7 @@ import {
   Parameter,
 } from './utils'
 import type { ObjectType } from '../lib/NodeType'
-import { getFunctionRecord } from '../utils/parameters.ts'
+import { getFunctionExpression } from '../utils/parameters.ts'
 // enum Function {
 //     // 函数声明
 //     FunctionDeclaration,
@@ -82,7 +82,8 @@ describe('检查函数参数名称 => FunctionParmas', () => {
 
   function expectFunParamsKeyName(funName: string, targetFunction?: any) {
     const scope = createScope()
-    targetFunction = targetFunction || getFunctionRecord(sourceFile, funName)!
+    targetFunction =
+      targetFunction || getFunctionExpression(sourceFile, funName)!
     const parasmsList = parseFunctionBody(
       targetFunction!,
       scope,
@@ -168,7 +169,8 @@ describe('检查函数参数类型', () => {
 
   function expectFunParamsType(funName: string, targetFunction?: any) {
     const scope = createScope()
-    targetFunction = targetFunction || getFunctionRecord(sourceFile, funName)!
+    targetFunction =
+      targetFunction || getFunctionExpression(sourceFile, funName)!
     const parasmsList = parseFunctionBody(
       targetFunction!,
       scope,

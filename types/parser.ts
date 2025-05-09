@@ -2,6 +2,10 @@ import {
   ArrowFunction,
   FunctionDeclaration,
   FunctionExpression,
+  Node,
+  type ParameterDeclaration,
+  type PropertyAccessExpression,
+  type Statement,
 } from 'ts-morph'
 import type { Scope } from './scope.ts'
 import type { Variable } from './variable.ts'
@@ -16,4 +20,11 @@ export type ParseFunctionBodyResult = {
   getReturnType: () => Variable | undefined
   getParamsList: () => ReturnType<Scope['getParamsList']>
   getLocalVariables: () => ReturnType<Scope['getLocalVariables']>
+}
+
+export type FunctionRecord = {
+  body: Node | undefined
+  params: ParameterDeclaration[]
+  returnStatement: Statement | undefined
+  propertyAccesses: PropertyAccessExpression[]
 }

@@ -2,8 +2,8 @@ import { expect, test, describe } from 'bun:test'
 import { Project } from 'ts-morph'
 import { parseFunctionBody } from '../lib/parser.ts'
 import { createScope } from '../lib/scope'
-import { getUuid } from './utils'
-import { getFunctionRecord } from '../utils/parameters.ts'
+import { getUuid } from '../utils'
+import { getFunctionExpression } from '../utils/parameters.ts'
 
 describe('函数scope变量类型', () => {
   const project = new Project()
@@ -23,7 +23,7 @@ describe('函数scope变量类型', () => {
     )
 
     const GlobalScope = createScope()
-    const fn = getFunctionRecord(sourceFile, 'test')!
+    const fn = getFunctionExpression(sourceFile, 'test')!
     const { getLocalVariables } = parseFunctionBody(fn, GlobalScope)
     const localVar = getLocalVariables()
     expect(localVar['data']).toBeUndefined()
@@ -41,7 +41,7 @@ describe('函数scope变量类型', () => {
     )
 
     const GlobalScope = createScope()
-    const fn = getFunctionRecord(sourceFile, 'test')!
+    const fn = getFunctionExpression(sourceFile, 'test')!
     const { getLocalVariables } = parseFunctionBody(fn, GlobalScope)
     const localVar = getLocalVariables()
     expect(localVar['dd']?.currentType?.toString()).toBe('number | string')
@@ -62,7 +62,7 @@ describe('函数scope变量类型', () => {
     )
 
     const GlobalScope = createScope()
-    const fn = getFunctionRecord(sourceFile, 'test')!
+    const fn = getFunctionExpression(sourceFile, 'test')!
     const { getLocalVariables } = parseFunctionBody(fn, GlobalScope)
     const localVar = getLocalVariables()
     expect(localVar['dd']?.currentType?.toString()).toBe(
@@ -81,7 +81,7 @@ describe('函数scope变量类型', () => {
     )
 
     const GlobalScope = createScope()
-    const fn = getFunctionRecord(sourceFile, 'test')!
+    const fn = getFunctionExpression(sourceFile, 'test')!
     const { getLocalVariables } = parseFunctionBody(fn, GlobalScope)
     const localVar = getLocalVariables()
     expect(localVar['dd']?.currentType?.toString()).toBe('string')
@@ -102,7 +102,7 @@ describe('函数scope变量类型', () => {
     )
 
     const GlobalScope = createScope()
-    const fn = getFunctionRecord(sourceFile, 'test')!
+    const fn = getFunctionExpression(sourceFile, 'test')!
     const { getLocalVariables } = parseFunctionBody(fn, GlobalScope)
     const localVar = getLocalVariables()
     expect(localVar['dd']?.currentType?.toString()).toBe(
@@ -124,7 +124,7 @@ describe('函数scope变量类型', () => {
     )
 
     const GlobalScope = createScope()
-    const fn = getFunctionRecord(sourceFile, 'test')!
+    const fn = getFunctionExpression(sourceFile, 'test')!
     const { getLocalVariables } = parseFunctionBody(fn, GlobalScope)
     const localVar = getLocalVariables()
     expect(localVar['a']?.currentType?.toString()).toBe('number')
@@ -150,7 +150,7 @@ describe('函数scope变量类型', () => {
     )
 
     const GlobalScope = createScope()
-    const fn = getFunctionRecord(sourceFile, 'test')!
+    const fn = getFunctionExpression(sourceFile, 'test')!
     const { getLocalVariables } = parseFunctionBody(fn, GlobalScope)
     const localVar = getLocalVariables()
     const objType = localVar['obj']!
@@ -178,7 +178,7 @@ describe('函数scope变量类型', () => {
     )
 
     const GlobalScope = createScope()
-    const fn = getFunctionRecord(sourceFile, 'test')!
+    const fn = getFunctionExpression(sourceFile, 'test')!
     const { getLocalVariables } = parseFunctionBody(fn, GlobalScope)
     const localVar = getLocalVariables()
     expect(localVar['a']?.currentType?.toString()).toBe('number')
@@ -204,7 +204,7 @@ describe('函数scope变量类型', () => {
     )
 
     const GlobalScope = createScope()
-    const fn = getFunctionRecord(sourceFile, 'test')!
+    const fn = getFunctionExpression(sourceFile, 'test')!
     const { getLocalVariables } = parseFunctionBody(fn, GlobalScope)
     const localVar = getLocalVariables()
     expect(localVar['a']?.currentType?.toString()).toBe('number')
@@ -233,7 +233,7 @@ describe('函数scope变量类型', () => {
     )
 
     const GlobalScope = createScope()
-    const fn = getFunctionRecord(sourceFile, 'test')!
+    const fn = getFunctionExpression(sourceFile, 'test')!
     const { getLocalVariables } = parseFunctionBody(fn, GlobalScope)
     const localVar = getLocalVariables()
     expect(localVar['target']?.currentType?.toString()).toBe(
@@ -266,7 +266,7 @@ describe('函数scope变量类型', () => {
     )
 
     const GlobalScope = createScope()
-    const fn = getFunctionRecord(sourceFile, 'test')!
+    const fn = getFunctionExpression(sourceFile, 'test')!
     const { getLocalVariables } = parseFunctionBody(fn, GlobalScope)
     const localVar = getLocalVariables()
     expect(localVar['l1']?.currentType?.toString()).toBe('number')
@@ -290,7 +290,7 @@ describe('函数scope变量类型', () => {
     )
 
     const GlobalScope = createScope()
-    const fn = getFunctionRecord(sourceFile, 'test')!
+    const fn = getFunctionExpression(sourceFile, 'test')!
     const { getLocalVariables } = parseFunctionBody(fn, GlobalScope)
     const localVar = getLocalVariables()
     expect(localVar['jk']?.currentType?.toString()).toBe('number | string')
@@ -317,7 +317,7 @@ describe('函数scope变量类型', () => {
     )
 
     const GlobalScope = createScope()
-    const fn = getFunctionRecord(sourceFile, 'test')!
+    const fn = getFunctionExpression(sourceFile, 'test')!
     const { getLocalVariables } = parseFunctionBody(fn, GlobalScope)
     const localVar = getLocalVariables()
     expect(localVar['a1']?.currentType?.toString()).toBe('number')
@@ -337,7 +337,7 @@ describe('函数scope变量类型', () => {
     )
 
     const GlobalScope = createScope()
-    const fn = getFunctionRecord(sourceFile, 'test')!
+    const fn = getFunctionExpression(sourceFile, 'test')!
     const { getLocalVariables } = parseFunctionBody(fn, GlobalScope)
     const localVar = getLocalVariables()
     expect(localVar['b']?.currentType?.toString()).toBe('number[] | boolean')
@@ -357,7 +357,7 @@ describe('函数scope变量类型', () => {
     )
 
     const GlobalScope = createScope()
-    const fn = getFunctionRecord(sourceFile, 'test')!
+    const fn = getFunctionExpression(sourceFile, 'test')!
     const { getLocalVariables } = parseFunctionBody(fn, GlobalScope)
     const localVar = getLocalVariables()
     expect(localVar['b']?.currentType?.toString()).toBe('any')
@@ -378,7 +378,7 @@ describe('函数scope变量类型', () => {
     )
 
     const GlobalScope = createScope()
-    const fn = getFunctionRecord(sourceFile, 'test')!
+    const fn = getFunctionExpression(sourceFile, 'test')!
     const { getLocalVariables } = parseFunctionBody(fn, GlobalScope)
     const localVar = getLocalVariables()
     expect(localVar['d']?.currentType?.toString()).toBe('boolean')
