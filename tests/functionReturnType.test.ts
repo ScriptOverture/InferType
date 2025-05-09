@@ -1,15 +1,10 @@
 import { expect, test, describe } from 'bun:test'
 import { Project } from 'ts-morph'
-import {inferFunctionType, parseFunctionBody} from '../main'
+import { parseFunctionBody } from '../lib/parser'
 import { createScope } from '../lib/scope'
-import { getFunction } from '../utils'
-import {
-  isNumberType,
-  isObjectType,
-  isStringType,
-  type ObjectType,
-} from '../lib/NodeType'
-import { getUuid } from './utils'
+import { TypeMatch } from '../lib/NodeType'
+import { inferFunctionType } from '../lib/inference'
+import { getFunctionRecord } from '../utils/parameters.ts'
 
 describe('函数返回值', () => {
   const project = new Project()
@@ -27,10 +22,10 @@ describe('函数返回值', () => {
     )
 
     const GlobalScope = createScope()
-    const fn = getFunction(sourceFile, 'fn')!
+    const fn = getFunctionRecord(sourceFile, 'fn')!
     const returnType = parseFunctionBody(fn, GlobalScope).getReturnType()!
 
-    expect(isObjectType(returnType)).toBeBoolean()
+    expect(TypeMatch.isObjectType(returnType)).toBeBoolean()
     expect(returnType.get('name')?.toString()).toBe('string')
     expect(returnType.get('age')?.toString()).toBe('number')
     expect(returnType.get('list')?.toString()).toBe('number[]')
@@ -48,21 +43,21 @@ describe('函数返回值', () => {
 
     const GlobalScope = createScope()
     const returnType = parseFunctionBody(
-      getFunction(sourceFile, 'fn')!,
+      getFunctionRecord(sourceFile, 'fn')!,
       GlobalScope,
     ).getReturnType()!
 
-    expect(isStringType(returnType)).toBeBoolean()
+    expect(TypeMatch.isStringType(returnType)).toBeBoolean()
 
     const returnType2 = parseFunctionBody(
-      getFunction(sourceFile, 'fn1')!,
+      getFunctionRecord(sourceFile, 'fn1')!,
       GlobalScope,
     ).getReturnType()!
 
-    expect(isNumberType(returnType2)).toBeBoolean()
+    expect(TypeMatch.isNumberType(returnType2)).toBeBoolean()
 
     const returnType3 = parseFunctionBody(
-      getFunction(sourceFile, 'fn2')!,
+      getFunctionRecord(sourceFile, 'fn2')!,
       GlobalScope,
     ).getReturnType()!
 
@@ -87,21 +82,21 @@ describe('函数返回值', () => {
 
     const GlobalScope = createScope()
     const returnType = parseFunctionBody(
-      getFunction(sourceFile, 'fn')!,
+      getFunctionRecord(sourceFile, 'fn')!,
       GlobalScope,
     ).getReturnType()!
 
-    expect(isStringType(returnType)).toBeBoolean()
+    expect(TypeMatch.isStringType(returnType)).toBeBoolean()
 
     const returnType2 = parseFunctionBody(
-      getFunction(sourceFile, 'fn1')!,
+      getFunctionRecord(sourceFile, 'fn1')!,
       GlobalScope,
     ).getReturnType()!
 
-    expect(isNumberType(returnType2)).toBeBoolean()
+    expect(TypeMatch.isNumberType(returnType2)).toBeBoolean()
 
     const returnType3 = parseFunctionBody(
-      getFunction(sourceFile, 'fn2')!,
+      getFunctionRecord(sourceFile, 'fn2')!,
       GlobalScope,
     ).getReturnType()!
 
@@ -110,7 +105,7 @@ describe('函数返回值', () => {
 
   test('箭头函数if 判断 return返回简单类型', () => {
     const returnType = inferFunctionType(
-        `
+      `
             const fn = () => {
                 if (1) {
                   return 1;
@@ -119,23 +114,23 @@ describe('函数返回值', () => {
                 }
             };
         `,
-        'fn',
-    ).getReturnType()!;
+      'fn',
+    ).getReturnType()!
 
     expect(returnType.toString()).toBe('number | string')
   })
 
   test('箭头函数if 判断 return返回类型推断', () => {
     const returnType = inferFunctionType(
-        `
+      `
               const fn = () => {
                   if (1) {
                     return 1;
                   }
               };
           `,
-        'fn'
-    ).getReturnType()!;
+      'fn',
+    ).getReturnType()!
 
     expect(returnType.toString()).toBe('number | undefined')
   })

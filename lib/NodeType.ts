@@ -1,6 +1,7 @@
-import type { Variable } from './variable'
+import type { Variable } from '../types/variable'
+import type { ParameterItem } from '../types/typeCompatibility'
 import { SyntaxKind } from 'ts-morph'
-import { getIdentifierStr, isString, type ParasmsItem } from '../utils'
+import { getIdentifierStr, isString } from '../utils'
 
 // 基础类型抽象
 export abstract class BasicType {
@@ -31,7 +32,7 @@ export class AnyType extends BasicType {
 
 export class UndefinedType extends BasicType {
   toString() {
-    return AllTypes.Undefined;
+    return AllTypes.Undefined
   }
   combine(other: BasicType): BasicType {
     return new UnionType([this, other])
@@ -218,7 +219,7 @@ export class UnionType extends BasicType {
  */
 export class FunctionType extends BasicType {
   constructor(
-    private readonly paramsType: ParasmsItem[],
+    private readonly paramsType: ParameterItem[],
     private readonly returnType?: BaseType,
   ) {
     super()
@@ -249,26 +250,16 @@ export class FunctionType extends BasicType {
   }
 }
 
-export function isBasicType(type: unknown): type is BasicType {
-  return type instanceof BasicType
-}
-
-export function isObjectType(type: BasicType): type is ObjectType {
-  return type instanceof ObjectType
-}
-
-export function isStringType(type: BasicType): type is StringType {
-  return type instanceof StringType
-}
-
-export function isNumberType(type: BasicType): type is NumberType {
-  return type instanceof NumberType
-}
-
-export function isTupleType(type: BasicType): type is TupleType {
-  return type instanceof TupleType
-}
-
-export function isArrayType(type: BasicType): type is ArrayType {
-  return type instanceof ArrayType
+export const TypeMatch = {
+  isBasicType: (type: unknown): type is BasicType => type instanceof BasicType,
+  isObjectType: (type: BasicType): type is ObjectType =>
+    type instanceof ObjectType,
+  isStringType: (type: BasicType): type is StringType =>
+    type instanceof StringType,
+  isNumberType: (type: BasicType): type is NumberType =>
+    type instanceof NumberType,
+  isTupleType: (type: BasicType): type is TupleType =>
+    type instanceof TupleType,
+  isArrayType: (type: BasicType): type is ArrayType =>
+    type instanceof ArrayType,
 }

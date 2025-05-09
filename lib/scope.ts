@@ -1,64 +1,44 @@
-import type { Variable } from './variable'
-import type { BaseType } from './NodeType'
 import { SyntaxKind, type ParameterDeclaration } from 'ts-morph'
 import { createVariable } from './variable'
-import { AnyType, isObjectType, ObjectType } from './NodeType'
-import {
-  getAllParametersType,
-  getBasicTypeToVariable,
-  type ParasmsItem,
-} from '../utils'
-
-export type Scope = {
-  find(name: string): Variable | undefined
-  createLocalVariable(name: string, iType?: BaseType): Variable
-  findParameter(paramName: string): TargetParamter | null
-  paramsMap: Record<string, Variable>
-  creatDestructured: (
-    targetVariable: Variable,
-    recordType: Record<string, Variable>,
-  ) => void
-  getParasmsList: () => ParasmsItem[]
-  getLocalVariables: () => Record<string, Variable>
-}
-
-type TargetParamter = {
-  creatDestructured: (recordType: Record<string, Variable>) => void
-}
+import { AnyType, ObjectType, TypeMatch } from './NodeType'
+import type { Scope } from '../types/scope.ts'
+import type { Variable } from '../types/variable.ts'
+import { getBasicTypeToVariable } from './typeCompatibility.ts'
+import { getFuncAllParametersType } from '../utils/parameters.ts'
 
 export function createScope(
   parameters: ParameterDeclaration[] = [],
   localVariables: Record<string, Variable> = {},
   prototype?: Scope,
-) {
-  const { paramsMap, parasmsList } = getAllParametersType(parameters)
+): Scope {
+  const { parameterMap, parameterList } = getFuncAllParametersType(parameters)
   initialLocalVariables()
 
   const _resultSelf: Scope = {
     find,
     createLocalVariable,
     findParameter,
-    paramsMap,
+    paramsMap: parameterMap,
     creatDestructured,
-    getParasmsList: () => parasmsList,
+    getParamsList: () => parameterList,
     getLocalVariables: () => localVariables,
   }
 
   Promise.resolve().then(() => {
     console.log(
       '<<<<',
-      paramsMap['props']?.currentType?.toString(),
+      parameterMap['props']?.currentType?.toString(),
       localVariables['aa']?.currentType?.toString(),
       '>>>>',
     )
   })
 
   function initialLocalVariables() {
-    parasmsList.forEach((item) => {
+    parameterList.forEach((item) => {
       if (item.kind !== SyntaxKind.ObjectBindingPattern) return
       // 如果是解构 需要赋值到 localVariables
       const origin = item.paramsType.currentType!
-      if (isObjectType(origin)) {
+      if (TypeMatch.isObjectType(origin)) {
         const { properties } = origin
         for (const k in properties) {
           createLocalVariable(k, getBasicTypeToVariable(properties[k]!))
@@ -89,7 +69,7 @@ export function createScope(
     if (!targetType) return null
     const { currentType } = targetType
 
-    if (!isObjectType(currentType!)) {
+    if (!TypeMatch.isObjectType(currentType!)) {
       targetType.setTypeRef(new ObjectType())
     }
     return {
@@ -100,7 +80,7 @@ export function createScope(
   }
 
   function find(name: string) {
-    return localVariables[name] || paramsMap[name] || prototype?.find(name)
+    return localVariables[name] || parameterMap[name] || prototype?.find(name)
   }
 
   function createLocalVariable(

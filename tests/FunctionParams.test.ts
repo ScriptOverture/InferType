@@ -1,8 +1,7 @@
 import { expect, test, describe } from 'bun:test'
-import { parseFunctionBody } from '../main'
+import { parseFunctionBody } from '../lib/parser.ts'
 import { Project, SyntaxKind } from 'ts-morph'
 import { createScope } from '../lib/scope'
-import { getFunction } from '../utils'
 import {
   getMockDataToFunBody,
   getMockDataToParams,
@@ -10,7 +9,7 @@ import {
   Parameter,
 } from './utils'
 import type { ObjectType } from '../lib/NodeType'
-
+import { getFunctionRecord } from '../utils/parameters.ts'
 // enum Function {
 //     // 函数声明
 //     FunctionDeclaration,
@@ -83,11 +82,11 @@ describe('检查函数参数名称 => FunctionParmas', () => {
 
   function expectFunParamsKeyName(funName: string, targetFunction?: any) {
     const scope = createScope()
-    targetFunction = targetFunction || getFunction(sourceFile, funName)!
+    targetFunction = targetFunction || getFunctionRecord(sourceFile, funName)!
     const parasmsList = parseFunctionBody(
       targetFunction!,
       scope,
-    ).getParasmsList()
+    ).getParamsList()
 
     expect(parasmsList.length).toEqual(paramData.length)
 
@@ -169,11 +168,11 @@ describe('检查函数参数类型', () => {
 
   function expectFunParamsType(funName: string, targetFunction?: any) {
     const scope = createScope()
-    targetFunction = targetFunction || getFunction(sourceFile, funName)!
+    targetFunction = targetFunction || getFunctionRecord(sourceFile, funName)!
     const parasmsList = parseFunctionBody(
       targetFunction!,
       scope,
-    ).getParasmsList()
+    ).getParamsList()
     paramData.forEach((item, index) => {
       const res = parasmsList[index]
 

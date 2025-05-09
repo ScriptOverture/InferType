@@ -1,22 +1,11 @@
-import type { Ref, RefReturn } from '../utils'
-import { AnyType, BasicType, isBasicType, isObjectType } from './NodeType'
+import type { Ref } from '../utils'
+import { AnyType, BasicType, TypeMatch } from './NodeType'
+import { isRef, createRef } from '../utils'
+import type { Variable } from '../types/variable.ts'
 import {
-  isRef,
-  createRef,
-  getVariableToBasicType,
   getBasicTypeToVariable,
-} from '../utils'
-
-export type Variable = {
-  ref: VariableTypeRef
-  currentType: BasicType | undefined
-  setTypeRef: RefReturn<unknown>[1]
-  get: (key: string) => Variable | undefined
-  combine: (data: Variable | BasicType) => Variable
-  toString: () => string
-}
-
-type VariableTypeRef = Ref<BasicType>
+  getVariableToBasicType,
+} from './typeCompatibility.ts'
 
 export function createVariable(
   iType: Ref<BasicType> | BasicType = new AnyType(),
@@ -24,7 +13,7 @@ export function createVariable(
   const [typeRef, setTypeRef] = createRef<BasicType>()
   if (isRef(iType)) {
     setTypeRef(iType.current!)
-  } else if (isBasicType(iType)) {
+  } else if (TypeMatch.isBasicType(iType)) {
     setTypeRef(iType)
   }
   // 内联缓存预留
@@ -41,7 +30,7 @@ export function createVariable(
     toString: () => typeRef.current?.toString()!,
     get: (key: string) => {
       const current = typeRef.current
-      if (isObjectType(current!)) {
+      if (TypeMatch.isObjectType(current!)) {
         const objType = current.properties[key]
         if (objType) {
           return getBasicTypeToVariable(objType)
