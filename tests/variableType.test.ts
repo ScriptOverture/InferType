@@ -501,4 +501,24 @@ describe('函数scope变量类型', () => {
       '{ a: { a3: number | string, a4: number[] }, a2: number | string }',
     )
   })
+
+  test('数组剩余参数[TupleType]类型推断', () => {
+    const sourceFile = project.createSourceFile(
+        `${getUuid()}.ts`,
+        `
+            const test = () => {
+                const fn = () => [1,2,3];
+                const list = [1, "2", fn];
+                const [a, ...other] = list;
+            }
+        `,
+    )
+
+    const GlobalScope = createScope()
+    const fn = getFunctionExpression(sourceFile, 'test')!
+    const { getLocalVariables } = parseFunctionBody(fn, GlobalScope)
+    const localVar = getLocalVariables()
+    expect(localVar['a']?.toString()).toBe('number')
+    expect(localVar['other']?.toString()).toBe('[string,() => number[]]')
+  })
 })

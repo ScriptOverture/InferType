@@ -453,10 +453,22 @@ export function inferArrayBindingPattern(
   traversal: ForEachDescendantTraversalControl,
 ) {
   if (!TypeMatch.isTupleType(initializerVariable.currentType!)) return
-  const targetTuple = initializerVariable.currentType
-  node.getElements().forEach((elem, index) => {
+  const targetTuple = initializerVariable.currentType;
+  const elements = node.getElements();
+  elements.forEach((elem, index) => {
     if (Node.isOmittedExpression(elem)) return
     const originName = elem.getName()
+    /**
+     * 数组剩余类型
+     */
+    if (elem.getDotDotDotToken()) {
+      const rhsType = initializerVariable.currentType!;
+      if (TypeMatch.isTupleType(rhsType)) {
+        scope.createLocalVariable(originName, new TupleType(rhsType.elementsType.slice(index)));
+      }
+
+      return
+    }
     // 默认值
     const initializer = elem.getInitializer()
     let targetType = targetTuple.getIndexType(index)!
@@ -471,9 +483,11 @@ export function inferArrayBindingPattern(
     }
 
     // 非别名， 更新右侧标识的同时还会更新词法环境
-    scope.creatDestructured(initializerVariable, {
-      [originName]: getBasicTypeToVariable(targetType),
-    })
+    // scope.creatDestructured(initializerVariable, {
+    //   [originName]: getBasicTypeToVariable(targetType),
+    // })
+
+    scope.createLocalVariable(originName, getBasicTypeToVariable(targetType));
   })
 }
 
