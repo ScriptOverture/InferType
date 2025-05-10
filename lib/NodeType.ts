@@ -1,7 +1,7 @@
 import type { Variable } from '../types/variable'
 import type { ParameterItem } from '../types/typeCompatibility'
 import { SyntaxKind } from 'ts-morph'
-import { getIdentifierStr, isString } from '../utils'
+import { getIdentifierStr, isString, mergeBasicTypeList } from '../utils'
 
 // 基础类型抽象
 export abstract class BasicType {
@@ -71,14 +71,26 @@ export class BooleanType extends BasicType {
 export class ArrayType extends BasicType {
   constructor(public elementType: BasicType = new AnyType()) {
     super()
+    if (TypeMatch.isTupleType(elementType)) {
+      this.elementType = mergeBasicTypeList(elementType.elementsType)
+    } else if (TypeMatch.isArrayType(elementType)) {
+      this.elementType = elementType.elementType
+    }
   }
 
   toString() {
+    if (TypeMatch.isUnionType(this.elementType)) {
+      return `(${this.elementType})[]`
+    }
     return `${this.elementType}[]`
   }
 
   combine(other: BasicType): BasicType {
     if (other instanceof AnyType) return this
+    if (TypeMatch.isTupleType(other)) {
+      this.elementType.combine(mergeBasicTypeList(other.elementsType))
+      return this
+    }
     if (other instanceof ArrayType) {
       return new ArrayType(this.elementType.combine(other.elementType))
     }
@@ -262,4 +274,6 @@ export const TypeMatch = {
     type instanceof TupleType,
   isArrayType: (type: BasicType): type is ArrayType =>
     type instanceof ArrayType,
+  isUnionType: (type: BasicType): type is UnionType =>
+    type instanceof UnionType,
 }

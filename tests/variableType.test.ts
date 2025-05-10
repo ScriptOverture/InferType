@@ -504,8 +504,8 @@ describe('函数scope变量类型', () => {
 
   test('数组剩余参数[TupleType]类型推断', () => {
     const sourceFile = project.createSourceFile(
-        `${getUuid()}.ts`,
-        `
+      `${getUuid()}.ts`,
+      `
             const test = () => {
                 const fn = () => [1,2,3];
                 const list = [1, "2", fn];
@@ -520,5 +520,71 @@ describe('函数scope变量类型', () => {
     const localVar = getLocalVariables()
     expect(localVar['a']?.toString()).toBe('number')
     expect(localVar['other']?.toString()).toBe('[string,() => number[]]')
+  })
+
+  test('同质类型数组展开语法拷贝类型推断', () => {
+    const sourceFile = project.createSourceFile(
+      `${getUuid()}.ts`,
+      `
+            const test = () => {
+                const l = [1,2,3];
+                const list = [...l];
+            }
+        `,
+    )
+
+    const GlobalScope = createScope()
+    const fn = getFunctionExpression(sourceFile, 'test')!
+    const { getLocalVariables } = parseFunctionBody(fn, GlobalScope)
+    const localVar = getLocalVariables()
+    expect(localVar['l']?.toString()).toBe('number[]')
+    expect(localVar['list']?.toString()).toBe('number[]')
+  })
+
+  test('元组数组展开语法拷贝类型推断', () => {
+    const sourceFile = project.createSourceFile(
+      `${getUuid()}.ts`,
+      `
+            const test = () => {
+                const fn = () => [1,2,3];
+                const l = [1, "2", fn];
+                const list = [...l];
+            }
+        `,
+    )
+
+    const GlobalScope = createScope()
+    const fn = getFunctionExpression(sourceFile, 'test')!
+    const { getLocalVariables } = parseFunctionBody(fn, GlobalScope)
+    const localVar = getLocalVariables()
+    expect(localVar['list']?.toString()).toBe(
+      '(number | string | () => number[])[]',
+    )
+  })
+
+  test('元组数组展开语法深层共享类型推断', () => {
+    const sourceFile = project.createSourceFile(
+      `${getUuid()}.ts`,
+      `
+            const test = () => {
+                const obj = {
+                  to1: {
+                    to2: 1
+                  }
+                }
+                const l = [obj, obj, obj];
+                let l2 = [...l]
+                obj.to1.to2 = "xxx"
+            }
+        `,
+    )
+
+    const GlobalScope = createScope()
+    const fn = getFunctionExpression(sourceFile, 'test')!
+    const { getLocalVariables } = parseFunctionBody(fn, GlobalScope)
+    const localVar = getLocalVariables()
+    expect(localVar['l2']?.toString()).toBe(
+      '{ to1: { to2: number | string } }[]',
+    )
   })
 })

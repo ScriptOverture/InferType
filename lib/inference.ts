@@ -13,6 +13,7 @@ import {
   type ArrayBindingPattern,
   type ObjectBindingPattern,
   type SpreadAssignment,
+  type SpreadElement,
 } from 'ts-morph'
 import type { ObjectVariable, Variable } from '../types/variable.ts'
 import { createVariable } from './variable.ts'
@@ -92,13 +93,11 @@ export function inferPropertyAssignmentType(
 
       if (allSame) {
         // 同质数组：T[]
-        const unionType = new UnionType([firstType!])
-        result = createVariable(new ArrayType(unionType))
+        result = createVariable(new ArrayType(firstType))
       } else {
         // 异构数组——元组
         // 直接用位置类型列表来构造 TupleType
-        const tupleType = new TupleType(elementTypes)
-        result = createVariable(tupleType)
+        result = createVariable(new TupleType(elementTypes))
       }
       break
     }
@@ -140,11 +139,18 @@ export function inferPropertyAssignmentType(
         iType.asKindOrThrow(SyntaxKind.ElementAccessExpression),
       )
       break
-    // 展开语法 ...obj
+    // 展开语法 {...obj} >> 对象展开语法
     case SyntaxKind.SpreadAssignment:
       result = inferSpreadAssignment(
         scope,
         iType.asKindOrThrow(SyntaxKind.SpreadAssignment),
+      )
+      break
+    // 展开语法 [...list] >> 数组展开语法
+    case SyntaxKind.SpreadElement:
+      result = inferSpreadElement(
+        scope,
+        iType.asKindOrThrow(SyntaxKind.SpreadElement),
       )
       break
     // 兜底推断类型
@@ -156,7 +162,15 @@ export function inferPropertyAssignmentType(
   return result
 }
 
-// 推断展开语法
+// 推断数组展开语法
+function inferSpreadElement(
+  scope: Scope,
+  node: SpreadElement,
+): Variable | undefined {
+  return inferPropertyAssignmentType(scope, getExpression(node))
+}
+
+// 推断对象展开语法
 function inferSpreadAssignment(
   scope: Scope,
   node: SpreadAssignment,
@@ -453,8 +467,8 @@ export function inferArrayBindingPattern(
   traversal: ForEachDescendantTraversalControl,
 ) {
   if (!TypeMatch.isTupleType(initializerVariable.currentType!)) return
-  const targetTuple = initializerVariable.currentType;
-  const elements = node.getElements();
+  const targetTuple = initializerVariable.currentType
+  const elements = node.getElements()
   elements.forEach((elem, index) => {
     if (Node.isOmittedExpression(elem)) return
     const originName = elem.getName()
@@ -462,9 +476,12 @@ export function inferArrayBindingPattern(
      * 数组剩余类型
      */
     if (elem.getDotDotDotToken()) {
-      const rhsType = initializerVariable.currentType!;
+      const rhsType = initializerVariable.currentType!
       if (TypeMatch.isTupleType(rhsType)) {
-        scope.createLocalVariable(originName, new TupleType(rhsType.elementsType.slice(index)));
+        scope.createLocalVariable(
+          originName,
+          new TupleType(rhsType.elementsType.slice(index)),
+        )
       }
 
       return
@@ -487,7 +504,7 @@ export function inferArrayBindingPattern(
     //   [originName]: getBasicTypeToVariable(targetType),
     // })
 
-    scope.createLocalVariable(originName, getBasicTypeToVariable(targetType));
+    scope.createLocalVariable(originName, getBasicTypeToVariable(targetType))
   })
 }
 

@@ -1,4 +1,5 @@
 import type { Variable } from '../types/variable.ts'
+import { AnyType, BasicType } from '../lib/NodeType.ts'
 
 export type Ref<T> = {
   current?: T
@@ -57,4 +58,11 @@ export function getUuid(): Uuid {
       v = c == 'x' ? r : (r & 0x3) | 0x8
     return v.toString(16)
   })
+}
+
+// 合并 BasicType 类型
+export function mergeBasicTypeList(list: BasicType[]): BasicType {
+  return list.reduce((result, bType) => {
+    return result.combine(bType)
+  }, new AnyType())
 }
