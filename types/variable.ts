@@ -12,4 +12,6 @@ export type Variable = {
   shallowCopy: () => Variable
 }
 
+export type ObjectVariable<T extends string = string> = Record<T, Variable>
+
 export type VariableTypeRef = Ref<BasicType>

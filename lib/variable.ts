@@ -43,13 +43,13 @@ export function createVariable(
       return self
     },
     shallowCopy: () => {
-      const targetBasicType = typeRef.current!;
+      const targetBasicType = typeRef.current!
       if (TypeMatch.isObjectType(targetBasicType)) {
         setTypeRef(new ObjectType({ ...targetBasicType.properties }))
       }
 
-      return self;
-    }
+      return self
+    },
   }
 
   return self

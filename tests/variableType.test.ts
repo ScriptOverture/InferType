@@ -389,8 +389,8 @@ describe('函数scope变量类型', () => {
 
   test('对象展开语法拷贝类型推断', () => {
     const sourceFile = project.createSourceFile(
-        `${getUuid()}.ts`,
-        `
+      `${getUuid()}.ts`,
+      `
             const test = () => {
                 const obj = {
                   a: 1,
@@ -406,15 +406,18 @@ describe('函数scope变量类型', () => {
     const fn = getFunctionExpression(sourceFile, 'test')!
     const { getLocalVariables } = parseFunctionBody(fn, GlobalScope)
     const localVar = getLocalVariables()
-    expect(localVar['obj']?.toString()).toBe('{ a: number, name: string, other: number[] }')
-    expect(localVar['obj2']?.toString()).toBe('{ a: number, name: string, other: number[] }')
+    expect(localVar['obj']?.toString()).toBe(
+      '{ a: number, name: string, other: number[] }',
+    )
+    expect(localVar['obj2']?.toString()).toBe(
+      '{ a: number, name: string, other: number[] }',
+    )
   })
-
 
   test('对象展开语法深层共享类型推断', () => {
     const sourceFile = project.createSourceFile(
-        `${getUuid()}.ts`,
-        `
+      `${getUuid()}.ts`,
+      `
             const test = () => {
                 const obj = {
                   to1: {
@@ -431,7 +434,71 @@ describe('函数scope变量类型', () => {
     const fn = getFunctionExpression(sourceFile, 'test')!
     const { getLocalVariables } = parseFunctionBody(fn, GlobalScope)
     const localVar = getLocalVariables()
-    expect(localVar['obj']?.toString()).toBe('{ to1: { to2: number | string } }')
-    expect(localVar['obj2']?.toString()).toBe('{ to1: { to2: number | string } }')
+    expect(localVar['obj']?.toString()).toBe(
+      '{ to1: { to2: number | string } }',
+    )
+    expect(localVar['obj2']?.toString()).toBe(
+      '{ to1: { to2: number | string } }',
+    )
+  })
+
+  test('对象剩余参数类型推断', () => {
+    const sourceFile = project.createSourceFile(
+      `${getUuid()}.ts`,
+      `
+            const test = () => {
+                const obj = {
+                  a1: 1,
+                  a2: 1,
+                  a3: 3,
+                  a4: [1,2,3]
+                }
+                const { a1, a2, ...other } = obj;
+            }
+        `,
+    )
+
+    const GlobalScope = createScope()
+    const fn = getFunctionExpression(sourceFile, 'test')!
+    const { getLocalVariables } = parseFunctionBody(fn, GlobalScope)
+    const localVar = getLocalVariables()
+    expect(localVar['a1']?.toString()).toBe('number')
+    expect(localVar['a2']?.toString()).toBe('number')
+    expect(localVar['other']?.toString()).toBe('{ a3: number, a4: number[] }')
+  })
+
+  test('对象剩余参数复用类型推断', () => {
+    const sourceFile = project.createSourceFile(
+      `${getUuid()}.ts`,
+      `
+            const test = () => {
+                const obj = {
+                  a1: 1,
+                  a2: 1,
+                  a3: 3,
+                  a4: [1,2,3]
+                }
+                const { a1, a2, ...other } = obj;
+                obj.a3 = "xxxx";
+                const obj2 = {
+                  a: other,
+                  a2: other.a3,
+                }
+            }
+        `,
+    )
+
+    const GlobalScope = createScope()
+    const fn = getFunctionExpression(sourceFile, 'test')!
+    const { getLocalVariables } = parseFunctionBody(fn, GlobalScope)
+    const localVar = getLocalVariables()
+    expect(localVar['a1']?.toString()).toBe('number')
+    expect(localVar['a2']?.toString()).toBe('number')
+    expect(localVar['other']?.toString()).toBe(
+      '{ a3: number | string, a4: number[] }',
+    )
+    expect(localVar['obj2']?.toString()).toBe(
+      '{ a: { a3: number | string, a4: number[] }, a2: number | string }',
+    )
   })
 })

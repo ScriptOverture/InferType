@@ -14,7 +14,7 @@ import {
   type ObjectBindingPattern,
   type SpreadAssignment,
 } from 'ts-morph'
-import type { Variable } from '../types/variable.ts'
+import type { ObjectVariable, Variable } from '../types/variable.ts'
 import { createVariable } from './variable.ts'
 import {
   ArrayType,
@@ -143,9 +143,9 @@ export function inferPropertyAssignmentType(
     // 展开语法 ...obj
     case SyntaxKind.SpreadAssignment:
       result = inferSpreadAssignment(
-          scope,
-          iType.asKindOrThrow(SyntaxKind.SpreadAssignment),
-      );
+        scope,
+        iType.asKindOrThrow(SyntaxKind.SpreadAssignment),
+      )
       break
     // 兜底推断类型
     default:
@@ -157,8 +157,11 @@ export function inferPropertyAssignmentType(
 }
 
 // 推断展开语法
-function inferSpreadAssignment(scope: Scope, node: SpreadAssignment): Variable | undefined {
-  return inferPropertyAssignmentType(scope, getExpression(node));
+function inferSpreadAssignment(
+  scope: Scope,
+  node: SpreadAssignment,
+): Variable | undefined {
+  return inferPropertyAssignmentType(scope, getExpression(node))
 }
 
 // 推导对象类型
@@ -166,21 +169,30 @@ function inferObjectLiteralExpression(
   scope: Scope,
   node: ObjectLiteralExpression,
 ): Variable {
-  const newObjVariableType = new ObjectType();
+  const newObjVariableType = new ObjectType()
   for (const propertyNode of node.getProperties()) {
     // 展开语法
     if (Node.isSpreadAssignment(propertyNode)) {
-      const spreadAssignmentVariable = inferSpreadAssignment(scope, propertyNode);
+      const spreadAssignmentVariable = inferSpreadAssignment(
+        scope,
+        propertyNode,
+      )
       if (spreadAssignmentVariable) {
-        newObjVariableType.combine(getVariableToBasicType(spreadAssignmentVariable.shallowCopy()));
+        newObjVariableType.combine(
+          getVariableToBasicType(spreadAssignmentVariable.shallowCopy()),
+        )
       }
     } else {
-      const property = propertyNode?.asKindOrThrow(SyntaxKind.PropertyAssignment)!
+      const property = propertyNode?.asKindOrThrow(
+        SyntaxKind.PropertyAssignment,
+      )!
       const propertyName = property.getName()
       const initializer = property.getInitializer()
-      newObjVariableType.combine(new ObjectType({
-        [propertyName]: inferPropertyAssignmentType(scope, initializer!)!
-      }))
+      newObjVariableType.combine(
+        new ObjectType({
+          [propertyName]: inferPropertyAssignmentType(scope, initializer!)!,
+        }),
+      )
     }
   }
   return createVariable(newObjVariableType)
@@ -478,13 +490,37 @@ export function inferObjectBindingPatternType(
   initializerVariable: Variable,
   traversal: ForEachDescendantTraversalControl,
 ) {
-  node.getElements().forEach((elem) => {
+  const objElements = node.getElements()
+  // 已展示的对象参数
+  const displayedKeys: string[] = []
+  objElements.forEach((elem) => {
     // x: a => x | x => x
     const originName = elem.getName()
+
     // 消费的别名
     const propName = elem.getPropertyNameNode()?.getText()
     // 默认值
     const initializer = elem.getInitializer()
+    // 解构剩余参数
+    if (elem.getDotDotDotToken()) {
+      const rhsType = initializerVariable.currentType!
+      if (TypeMatch.isObjectType(rhsType)) {
+        const othersType = Object.keys(
+          rhsType.properties,
+        ).reduce<ObjectVariable>((otherType, item) => {
+          if (!displayedKeys.includes(item)) {
+            otherType[item] = getBasicTypeToVariable(rhsType.properties[item]!)
+          }
+          return otherType
+        }, {})
+        scope.createLocalVariable(originName, new ObjectType(othersType))
+      }
+
+      return
+    } else {
+      displayedKeys.push(originName)
+    }
+
     // let attrType: Variable;
     let attrType = initializerVariable.get(originName)
     let hasQueryVariable = false

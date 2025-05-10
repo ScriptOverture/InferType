@@ -28,7 +28,7 @@ export function createScope(
     console.log(
       '<<<<',
       parameterMap['props']?.currentType?.toString(),
-      localVariables['aa']?.currentType?.toString(),
+      new ObjectType(localVariables)?.toString(),
       '>>>>',
     )
   })
