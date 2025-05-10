@@ -12,6 +12,7 @@ import {
   type IfStatement,
   type ArrayBindingPattern,
   type ObjectBindingPattern,
+  type SpreadAssignment,
 } from 'ts-morph'
 import type { Variable } from '../types/variable.ts'
 import { createVariable } from './variable.ts'
@@ -139,6 +140,13 @@ export function inferPropertyAssignmentType(
         iType.asKindOrThrow(SyntaxKind.ElementAccessExpression),
       )
       break
+    // 展开语法 ...obj
+    case SyntaxKind.SpreadAssignment:
+      result = inferSpreadAssignment(
+          scope,
+          iType.asKindOrThrow(SyntaxKind.SpreadAssignment),
+      );
+      break
     // 兜底推断类型
     default:
       result = basicTypeToVariable(iType)
@@ -148,19 +156,34 @@ export function inferPropertyAssignmentType(
   return result
 }
 
+// 推断展开语法
+function inferSpreadAssignment(scope: Scope, node: SpreadAssignment): Variable | undefined {
+  return inferPropertyAssignmentType(scope, getExpression(node));
+}
+
 // 推导对象类型
 function inferObjectLiteralExpression(
   scope: Scope,
   node: ObjectLiteralExpression,
 ): Variable {
-  const newObjType: Record<string, Variable> = {}
+  const newObjVariableType = new ObjectType();
   for (const propertyNode of node.getProperties()) {
-    const property = propertyNode?.asKindOrThrow(SyntaxKind.PropertyAssignment)!
-    const propertyName = property.getName()
-    const initializer = property.getInitializer()
-    newObjType[propertyName] = inferPropertyAssignmentType(scope, initializer!)!
+    // 展开语法
+    if (Node.isSpreadAssignment(propertyNode)) {
+      const spreadAssignmentVariable = inferSpreadAssignment(scope, propertyNode);
+      if (spreadAssignmentVariable) {
+        newObjVariableType.combine(getVariableToBasicType(spreadAssignmentVariable.shallowCopy()));
+      }
+    } else {
+      const property = propertyNode?.asKindOrThrow(SyntaxKind.PropertyAssignment)!
+      const propertyName = property.getName()
+      const initializer = property.getInitializer()
+      newObjVariableType.combine(new ObjectType({
+        [propertyName]: inferPropertyAssignmentType(scope, initializer!)!
+      }))
+    }
   }
-  return createVariable(new ObjectType(newObjType))
+  return createVariable(newObjVariableType)
 }
 
 // 推导三元运算，获取 whenTrue 和 whenFalse 的联合类型

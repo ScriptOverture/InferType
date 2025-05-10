@@ -1,5 +1,5 @@
 import type { Ref } from '../utils'
-import { AnyType, BasicType, TypeMatch } from './NodeType'
+import { AnyType, BasicType, ObjectType, TypeMatch } from './NodeType'
 import { isRef, createRef } from '../utils'
 import type { Variable } from '../types/variable.ts'
 import {
@@ -42,6 +42,14 @@ export function createVariable(
       setTypeRef(getVariableToBasicType(currenType!))
       return self
     },
+    shallowCopy: () => {
+      const targetBasicType = typeRef.current!;
+      if (TypeMatch.isObjectType(targetBasicType)) {
+        setTypeRef(new ObjectType({ ...targetBasicType.properties }))
+      }
+
+      return self;
+    }
   }
 
   return self

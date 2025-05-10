@@ -8,6 +8,8 @@ export type Variable = {
   get: (key: string) => Variable | undefined
   combine: (data: Variable | BasicType) => Variable
   toString: () => string
+  // 浅拷贝
+  shallowCopy: () => Variable
 }
 
 export type VariableTypeRef = Ref<BasicType>

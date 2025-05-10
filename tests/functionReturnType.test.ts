@@ -134,4 +134,18 @@ describe('函数返回值', () => {
 
     expect(returnType.toString()).toBe('number | undefined')
   })
+
+
+  test('箭头函数if 判断简写 return返回类型推断', () => {
+    const returnType = inferFunctionType(
+        `
+              const fn = () => {
+                  if (1) return 1;
+              };
+          `,
+        'fn',
+    ).getReturnType()!
+
+    expect(returnType.toString()).toBe('number | undefined')
+  })
 })
