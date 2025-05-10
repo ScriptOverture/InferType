@@ -264,16 +264,13 @@ export class FunctionType extends BasicType {
 
 export const TypeMatch = {
   isBasicType: (type: unknown): type is BasicType => type instanceof BasicType,
-  isObjectType: (type: BasicType): type is ObjectType =>
+  isObjectType: (type: unknown): type is ObjectType =>
     type instanceof ObjectType,
-  isStringType: (type: BasicType): type is StringType =>
+  isStringType: (type: unknown): type is StringType =>
     type instanceof StringType,
-  isNumberType: (type: BasicType): type is NumberType =>
+  isNumberType: (type: unknown): type is NumberType =>
     type instanceof NumberType,
-  isTupleType: (type: BasicType): type is TupleType =>
-    type instanceof TupleType,
-  isArrayType: (type: BasicType): type is ArrayType =>
-    type instanceof ArrayType,
-  isUnionType: (type: BasicType): type is UnionType =>
-    type instanceof UnionType,
+  isTupleType: (type: unknown): type is TupleType => type instanceof TupleType,
+  isArrayType: (type: unknown): type is ArrayType => type instanceof ArrayType,
+  isUnionType: (type: unknown): type is UnionType => type instanceof UnionType,
 }
