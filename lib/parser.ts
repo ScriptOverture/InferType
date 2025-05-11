@@ -13,6 +13,7 @@ import {
   inferObjectBindingPatternType,
   inferIfStatement,
   inferPropertyAssignmentType,
+  inferVariableDeclareType,
 } from './inference.ts'
 import type {
   FunctionNode,
@@ -22,6 +23,7 @@ import type {
 import type { Scope } from '../types/scope.ts'
 import type { Variable } from '../types/variable.ts'
 import { getExpression, unwrapParentheses } from '../utils/parameters.ts'
+import { AnyType } from './NodeType.ts'
 
 // 获取函数信息
 function getFunctionRecord(iFunction: FunctionNode): FunctionRecord {
@@ -89,6 +91,7 @@ export function parseFunctionBody(
   ) {
     const varDecl = node.asKindOrThrow(SyntaxKind.VariableDeclaration)
     const nameNode = varDecl.getNameNode()
+    const varDeclKind = inferVariableDeclareType(varDecl)
 
     switch (nameNode.getKind()) {
       // 对象解构：例如 const { name, data } = props;
@@ -122,7 +125,7 @@ export function parseFunctionBody(
       // 简单别名赋值：例如 const copyProps = props;
       case SyntaxKind.Identifier: {
         const initializer = varDecl.getInitializer()
-        const newType = createVariable()
+        const newType = createVariable(new AnyType(), varDeclKind)
         scope.createLocalVariable(nameNode.getText(), newType)
         if (!initializer) return
         const rhsType = inferenceType(scope, initializer, traversal)
@@ -141,7 +144,7 @@ export function parseFunctionBody(
     traversal: ForEachDescendantTraversalControl,
   ) {
     const binExp = node.asKindOrThrow(SyntaxKind.BinaryExpression)
-    inferenceType(scope, binExp, traversal);
+    inferenceType(scope, binExp, traversal)
   }
 
   function toIfStatement(node: Node<ts.Node>) {

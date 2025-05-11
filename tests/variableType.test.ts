@@ -384,7 +384,7 @@ describe('函数scope变量类型', () => {
     expect(localVar['d']?.currentType?.toString()).toBe('boolean')
     expect(localVar['d1']?.currentType?.toString()).toBe('boolean')
     // 待后续 const 补充
-    // expect(localVar['data']?.currentType?.toString()).toBe('number | string')
+    expect(localVar['data']?.currentType?.toString()).toBe('number')
   })
 
   test('对象展开语法拷贝类型推断', () => {

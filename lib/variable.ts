@@ -1,14 +1,16 @@
 import type { Ref } from '../utils'
+import { createRef, isRef } from '../utils'
 import { AnyType, BasicType, ObjectType, TypeMatch } from './NodeType'
-import { isRef, createRef } from '../utils'
-import type { Variable } from '../types/variable.ts'
+import { type Variable } from '../types/variable.ts'
 import {
   getBasicTypeToVariable,
   getVariableToBasicType,
 } from './typeCompatibility.ts'
+import { VariableDeclarationKind } from 'ts-morph'
 
 export function createVariable(
   iType: Ref<BasicType> | BasicType = new AnyType(),
+  declarationKind: VariableDeclarationKind = VariableDeclarationKind.Let,
 ): Variable {
   const [typeRef, setTypeRef] = createRef<BasicType>()
   if (isRef(iType)) {
@@ -16,11 +18,10 @@ export function createVariable(
   } else if (TypeMatch.isBasicType(iType)) {
     setTypeRef(iType)
   }
-  // 内联缓存预留
-  // let _references = new Set<VariableTypeRef>()
 
   const self = {
     setTypeRef,
+    isVariableMutable: () => isVariableMutable(typeRef, declarationKind),
     get ref() {
       return typeRef
     },
@@ -53,4 +54,25 @@ export function createVariable(
   }
 
   return self
+}
+
+// 判断申明及 BasicType 是否可变
+function isVariableMutable(
+  basicTypeRef: Ref<BasicType>,
+  declarationKind: VariableDeclarationKind,
+): boolean {
+  const basicType = basicTypeRef.current
+  /**
+   * 引用类型
+   */
+  const referenceType =
+    TypeMatch.isArrayType(basicType) ||
+    TypeMatch.isObjectType(basicType) ||
+    TypeMatch.isTupleType(basicType)
+  if (!referenceType) {
+    if (declarationKind === VariableDeclarationKind.Const) {
+      return false
+    }
+  }
+  return true
 }

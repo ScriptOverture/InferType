@@ -10,6 +10,8 @@ export type Variable = {
   toString: () => string
   // 浅拷贝
   shallowCopy: () => Variable
+  // 申明是否可变
+  isVariableMutable: () => boolean
 }
 
 export type ObjectVariable<T extends string = string> = Record<T, Variable>

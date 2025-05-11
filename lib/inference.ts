@@ -14,6 +14,8 @@ import {
   type ObjectBindingPattern,
   type SpreadAssignment,
   type SpreadElement,
+  VariableDeclarationKind,
+  type VariableDeclaration,
 } from 'ts-morph'
 import type { ObjectVariable, Variable } from '../types/variable.ts'
 import { createVariable } from './variable.ts'
@@ -289,9 +291,14 @@ function assignment(
   let resultType
   if (Node.isBinaryExpression(rightToken)) {
     resultType = inferBinaryExpressionType(scope, rightToken)!
-    leftVariable.combine(resultType)
   } else {
     resultType = inferPropertyAssignmentType(scope, rightToken)!
+  }
+
+  /**
+   * 变量如果可变才会赋值类型
+   */
+  if (leftVariable.isVariableMutable()) {
     leftVariable.combine(resultType)
   }
 
@@ -582,6 +589,15 @@ export function inferObjectBindingPatternType(
       })
     }
   })
+}
+
+// 推断变量申明标识
+export function inferVariableDeclareType(
+  node: VariableDeclaration,
+): VariableDeclarationKind {
+  const varDeclList = node.getParent()
+  const iNode = varDeclList.asKindOrThrow(SyntaxKind.VariableDeclarationList)
+  return iNode.getDeclarationKind()
 }
 
 /**
