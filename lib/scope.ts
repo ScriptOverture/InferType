@@ -1,6 +1,6 @@
 import { SyntaxKind, type ParameterDeclaration } from 'ts-morph'
 import { createVariable } from './variable'
-import { AnyType, ObjectType, TypeMatch } from './NodeType'
+import { ObjectType, TypeMatch } from './NodeType'
 import type { Scope } from '../types/scope.ts'
 import type { Variable } from '../types/variable.ts'
 import { getBasicTypeToVariable } from './typeCompatibility.ts'
@@ -85,7 +85,7 @@ export function createScope(
 
   function createLocalVariable(
     name: string,
-    variable: Variable = createVariable(new AnyType()),
+    variable: Variable = createVariable(),
   ) {
     return (localVariables[name] = variable)
   }

@@ -28,6 +28,7 @@ import {
   UnionType,
   TypeMatch,
   UndefinedType,
+  AnyType,
 } from './NodeType.ts'
 import type { Scope } from '../types/scope.ts'
 import { parseFunctionBody } from './parser.ts'
@@ -466,14 +467,15 @@ export function inferenceType(
  * @param node
  * @param initializerVariable
  * @param traversal
+ * @param declarationKind
  */
 export function inferArrayBindingPattern(
   scope: Scope,
   node: ArrayBindingPattern,
   initializerVariable: Variable,
   traversal: ForEachDescendantTraversalControl,
+  declarationKind: VariableDeclarationKind = VariableDeclarationKind.Let,
 ) {
-  if (!TypeMatch.isTupleType(initializerVariable.currentType!)) return
   const targetTuple = initializerVariable.currentType
   const elements = node.getElements()
   elements.forEach((elem, index) => {
@@ -483,11 +485,19 @@ export function inferArrayBindingPattern(
      * 数组剩余类型
      */
     if (elem.getDotDotDotToken()) {
-      const rhsType = initializerVariable.currentType!
+      const rhsType = targetTuple!
       if (TypeMatch.isTupleType(rhsType)) {
         scope.createLocalVariable(
           originName,
-          new TupleType(rhsType.elementsType.slice(index)),
+          createVariable(
+            new TupleType(rhsType.elementsType.slice(index)),
+            declarationKind,
+          ),
+        )
+      } else {
+        scope.createLocalVariable(
+          originName,
+          createVariable(targetTuple, declarationKind),
         )
       }
 
@@ -495,23 +505,23 @@ export function inferArrayBindingPattern(
     }
     // 默认值
     const initializer = elem.getInitializer()
-    let targetType = targetTuple.getIndexType(index)!
+    let targetType
+    if (TypeMatch.isTupleType(targetTuple)) {
+      targetType = getBasicTypeToVariable(targetTuple.getIndexType(index)!)
+    } else if (TypeMatch.isArrayType(targetTuple)) {
+      targetType = createVariable(targetTuple.elementType, declarationKind)
+    }
 
     if (!targetType) {
       // 默认值
       if (initializer) {
         targetType = inferenceType(scope, initializer, traversal)!
       } else {
-        targetType = createVariable()
+        targetType = createVariable(new AnyType(), declarationKind)
       }
     }
 
-    // 非别名， 更新右侧标识的同时还会更新词法环境
-    // scope.creatDestructured(initializerVariable, {
-    //   [originName]: getBasicTypeToVariable(targetType),
-    // })
-
-    scope.createLocalVariable(originName, getBasicTypeToVariable(targetType))
+    scope.createLocalVariable(originName, targetType as Variable)
   })
 }
 
@@ -521,12 +531,14 @@ export function inferArrayBindingPattern(
  * @param node
  * @param initializerVariable
  * @param traversal
+ * @param declarationKind
  */
 export function inferObjectBindingPatternType(
   scope: Scope,
   node: ObjectBindingPattern,
   initializerVariable: Variable,
   traversal: ForEachDescendantTraversalControl,
+  declarationKind: VariableDeclarationKind = VariableDeclarationKind.Let,
 ) {
   const objElements = node.getElements()
   // 已展示的对象参数
@@ -551,7 +563,10 @@ export function inferObjectBindingPatternType(
           }
           return otherType
         }, {})
-        scope.createLocalVariable(originName, new ObjectType(othersType))
+        scope.createLocalVariable(
+          originName,
+          createVariable(new ObjectType(othersType), declarationKind),
+        )
       }
 
       return
@@ -568,10 +583,14 @@ export function inferObjectBindingPatternType(
       if (initializer) {
         attrType = inferenceType(scope, initializer, traversal)!
       } else {
-        attrType = createVariable()
+        attrType = createVariable(new AnyType(), declarationKind)
       }
     } else {
       hasQueryVariable = true
+      /**
+       * 更新申明标识 / declarationKind
+       */
+      attrType = createVariable(attrType.currentType, declarationKind)
     }
 
     // 別名

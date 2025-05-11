@@ -4,6 +4,7 @@ import { parseFunctionBody } from '../lib/parser.ts'
 import { createScope } from '../lib/scope'
 import { getUuid } from '../utils'
 import { getFunctionExpression } from '../utils/parameters.ts'
+import { inferFunctionType } from '../lib/inference.ts'
 
 describe('函数scope变量类型', () => {
   const project = new Project()
@@ -586,5 +587,47 @@ describe('函数scope变量类型', () => {
     expect(localVar['l2']?.toString()).toBe(
       '{ to1: { to2: number | string } }[]',
     )
+  })
+
+  test('const对象解构简单类型是否可更改', () => {
+    const { getLocalVariables } = inferFunctionType(
+      `const test = () => {
+                const obj = {
+                  to1: {
+                    to2: 1
+                  },
+                  a: 1,
+                  b: 2,
+                  c: [1,2,3]
+                }
+                const { a, b, to1 } = obj;
+                if (a === '1') {}
+                if (b === '1') {}
+                if (to1.to2 === 'xxx') {}
+            }
+        `,
+      'test',
+    )
+    const localVar = getLocalVariables()
+    expect(localVar['a']?.toString()).toBe('number')
+    expect(localVar['b']?.toString()).toBe('number')
+    expect(localVar['to1']?.toString()).toBe('{ to2: number | string }')
+  })
+
+  test('const数组解构简单类型是否可更改', () => {
+    const { getLocalVariables } = inferFunctionType(
+      `const test = () => {
+                const list = [1,2,3,4]
+                const [ a, b, ...args ] = list;
+                if (a === '1') {}
+                if (b === '1') {}
+            }
+        `,
+      'test',
+    )
+    const localVar = getLocalVariables()
+    expect(localVar['a']?.toString()).toBe('number')
+    expect(localVar['b']?.toString()).toBe('number')
+    expect(localVar['args']?.toString()).toBe('number[]')
   })
 })

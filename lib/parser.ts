@@ -105,6 +105,7 @@ export function parseFunctionBody(
           bindingPattern,
           inferenceType(scope, initializer, traversal)!,
           traversal,
+          varDeclKind,
         )
         break
       }
@@ -119,6 +120,7 @@ export function parseFunctionBody(
           bindingPattern,
           inferenceType(scope, initializer, traversal)!,
           traversal,
+          varDeclKind,
         )
         break
       }
