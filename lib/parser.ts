@@ -23,7 +23,7 @@ import type {
 import type { Scope } from '../types/scope.ts'
 import type { Variable } from '../types/variable.ts'
 import { getExpression, unwrapParentheses } from '../utils/parameters.ts'
-import { AnyType } from './NodeType.ts'
+import { AnyType, PromiseType } from './NodeType.ts'
 
 // 获取函数信息
 function getFunctionRecord(iFunction: FunctionNode): FunctionRecord {
@@ -37,6 +37,7 @@ function getFunctionRecord(iFunction: FunctionNode): FunctionRecord {
     propertyAccesses: iFunction?.getDescendantsOfKind(
       SyntaxKind.PropertyAccessExpression,
     ),
+    hasAsyncToken: iFunction.getModifiers().at(0),
   }
 }
 
@@ -49,7 +50,8 @@ export function parseFunctionBody(
   funNode: FunctionNode,
   scopePrototype?: Scope,
 ): ParseFunctionBodyResult {
-  const { params, body, returnStatement } = getFunctionRecord(funNode)
+  const { params, body, returnStatement, hasAsyncToken } =
+    getFunctionRecord(funNode)
   const scope = createScope(params, {}, scopePrototype)
   const [returnStatementType, setReturnStatementType] =
     createRef<Variable>(createVariable())
@@ -210,20 +212,26 @@ export function parseFunctionBody(
   }
 
   function getFunctionReturnType() {
+    let result
     // 箭头函数
     if (Node.isArrowFunction(funNode)) {
       const eqGtToken = funNode.getEqualsGreaterThan()
       const nextNode = eqGtToken.getNextSibling()!
       // 函数显示返回类型
       if (Node.isBlock(nextNode)) {
-        return returnStatementType.current
+        result = returnStatementType.current
+      } else {
+        result = inferPropertyAssignmentType(scope, unwrapParentheses(nextNode))
       }
-
-      return inferPropertyAssignmentType(scope, unwrapParentheses(nextNode))
     }
     // 普通函数
     else {
-      return returnStatementType.current
+      result = returnStatementType.current
     }
+
+    if (hasAsyncToken) {
+      return createVariable(new PromiseType(result?.currentType))
+    }
+    return result
   }
 }

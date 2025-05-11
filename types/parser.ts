@@ -3,6 +3,7 @@ import {
   FunctionDeclaration,
   FunctionExpression,
   Node,
+  ts,
   type ParameterDeclaration,
   type PropertyAccessExpression,
   type Statement,
@@ -27,4 +28,5 @@ export type FunctionRecord = {
   params: ParameterDeclaration[]
   returnStatement: Statement | undefined
   propertyAccesses: PropertyAccessExpression[]
+  hasAsyncToken: Node<ts.Modifier> | undefined
 }

@@ -18,6 +18,7 @@ export enum AllTypes {
   Number = 'number',
   Undefined = 'undefined',
   Void = 'void',
+  Promise = 'Promise',
 }
 
 // 任意类型（初始状态）
@@ -94,6 +95,22 @@ export class ArrayType extends BasicType {
     if (other instanceof ArrayType) {
       return new ArrayType(this.elementType.combine(other.elementType))
     }
+    return new UnionType([this, other])
+  }
+}
+
+// promise
+export class PromiseType extends BasicType {
+  constructor(public elementType: BasicType = new AnyType()) {
+    super()
+  }
+
+  toString(): string {
+    return `Promise<${this.elementType}>`
+  }
+
+  combine(other: BasicType): BasicType {
+    if (other instanceof AnyType) return this
     return new UnionType([this, other])
   }
 }

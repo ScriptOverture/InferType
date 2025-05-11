@@ -148,3 +148,21 @@ describe('函数返回值', () => {
     expect(returnType.toString()).toBe('number | undefined')
   })
 })
+
+describe('promise 函数返回', () => {
+  test('async 函数类型推断', () => {
+    const { getReturnType } = inferFunctionType(
+      `const test = async () => {
+            const result = {
+                a: 1,
+                b: "x"
+            };
+            return result
+         }
+        `,
+      'test',
+    )
+    const returnType = getReturnType()
+    expect(returnType?.toString()).toBe('Promise<{ a: number, b: string }>')
+  })
+})
