@@ -141,11 +141,7 @@ export function parseFunctionBody(
     traversal: ForEachDescendantTraversalControl,
   ) {
     const binExp = node.asKindOrThrow(SyntaxKind.BinaryExpression)
-    if (binExp.getOperatorToken().getKind() === SyntaxKind.EqualsToken) {
-      const leftType = inferenceType(scope, binExp.getLeft(), traversal)!
-      const rightType = inferenceType(scope, binExp.getRight(), traversal)
-      leftType.combine(rightType!)
-    }
+    inferenceType(scope, binExp, traversal);
   }
 
   function toIfStatement(node: Node<ts.Node>) {

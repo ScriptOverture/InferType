@@ -232,7 +232,7 @@ function inferConditionalExpressionType(
 }
 
 //  推断操作符类型
-function inferBinaryExpressionType(
+export function inferBinaryExpressionType(
   scope: Scope,
   node: BinaryExpression,
 ): Variable | undefined {
