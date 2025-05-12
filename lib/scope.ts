@@ -2,13 +2,13 @@ import { SyntaxKind, type ParameterDeclaration } from 'ts-morph'
 import { createVariable } from './variable'
 import { ObjectType, TypeMatch } from './NodeType'
 import type { Scope } from '../types/scope.ts'
-import type { Variable } from '../types/variable.ts'
+import type { ObjectVariable, Variable } from '../types/variable.ts'
 import { getBasicTypeToVariable } from './typeCompatibility.ts'
 import { getFuncAllParametersType } from '../utils/parameters.ts'
 
 export function createScope(
   parameters: ParameterDeclaration[] = [],
-  localVariables: Record<string, Variable> = {},
+  localVariables: ObjectVariable = {},
   prototype?: Scope,
 ): Scope {
   const { parameterMap, parameterList } = getFuncAllParametersType(parameters)
@@ -49,15 +49,16 @@ export function createScope(
 
   function creatDestructured(
     targetVariable: Variable,
-    recordType: Record<string, Variable>,
+    recordType: ObjectVariable,
   ) {
     const variable = createVariable(new ObjectType(recordType))
     targetVariable.combine(variable)
 
     for (const k in recordType) {
       if (Object.hasOwn(localVariables, k)) {
-        // 有 同步bug
-        localVariables[k] = localVariables[k]?.combine(variable.get(k)!)!
+        localVariables[k] = getBasicTypeToVariable(
+          localVariables[k]?.combine(variable.get(k)!)!,
+        )
       } else {
         localVariables[k] = variable.get(k)!
       }
@@ -73,7 +74,7 @@ export function createScope(
       targetType.setTypeRef(new ObjectType())
     }
     return {
-      creatDestructured(recordType: Record<string, Variable>) {
+      creatDestructured(recordType: ObjectVariable) {
         creatDestructured(targetType, recordType)
       },
     }

@@ -1,7 +1,6 @@
-import type { Variable } from './variable.ts'
+import type { ObjectVariable, Variable } from './variable.ts'
 import { ParameterDeclaration, SyntaxKind } from 'ts-morph'
 
-export type ParameterMap = Record<string, Variable>
 export type ParameterItem = {
   current: ParameterDeclaration
   kind: SyntaxKind
@@ -10,6 +9,6 @@ export type ParameterItem = {
 }
 
 export type FunctionParameters = {
-  parameterMap: ParameterMap
+  parameterMap: ObjectVariable
   parameterList: ParameterItem[]
 }
