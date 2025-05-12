@@ -37,6 +37,7 @@ export function basicTypeToVariable(iType: Expression): Variable | undefined {
 
 // ts type 转 BasicType
 export function tsTypeToBasicType(type: Type) {
+  const types = type.getUnionTypes()
   switch (type.getFlags()) {
     case ts.TypeFlags.String:
       return new StringType()
@@ -47,6 +48,9 @@ export function tsTypeToBasicType(type: Type) {
     case TypeFlags.Any:
       return new AnyType()
     default:
+      if (types.every((t) => t.getFlags() === TypeFlags.BooleanLiteral)) {
+        return new BooleanType()
+      }
       return new AnyType()
   }
 }

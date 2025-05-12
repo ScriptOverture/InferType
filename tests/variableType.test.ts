@@ -326,68 +326,6 @@ describe('函数scope变量类型', () => {
     expect(localVar['a3']?.currentType?.toString()).toBe('number[]')
   })
 
-  test('操作符或 ||', () => {
-    const sourceFile = project.createSourceFile(
-      `${getUuid()}.ts`,
-      `
-            const test = () => {
-                let oo = [1,2,3,4];
-                let b = oo || true; 
-            }
-        `,
-    )
-
-    const GlobalScope = createScope()
-    const fn = getFunctionExpression(sourceFile, 'test')!
-    const { getLocalVariables } = parseFunctionBody(fn, GlobalScope)
-    const localVar = getLocalVariables()
-    expect(localVar['b']?.currentType?.toString()).toBe('number[] | boolean')
-  })
-
-  test('操作符+', () => {
-    const sourceFile = project.createSourceFile(
-      `${getUuid()}.ts`,
-      `
-            const test = () => {
-                let oo = [1,2,3,4];
-                let b = true + oo;
-                let b1 = 1 + '123'; 
-                let b2 = 1 + 123;
-            }
-        `,
-    )
-
-    const GlobalScope = createScope()
-    const fn = getFunctionExpression(sourceFile, 'test')!
-    const { getLocalVariables } = parseFunctionBody(fn, GlobalScope)
-    const localVar = getLocalVariables()
-    expect(localVar['b']?.currentType?.toString()).toBe('any')
-    expect(localVar['b1']?.currentType?.toString()).toBe('string')
-    expect(localVar['b2']?.currentType?.toString()).toBe('number')
-  })
-
-  test('操作符等于以及全等推断', () => {
-    const sourceFile = project.createSourceFile(
-      `${getUuid()}.ts`,
-      `
-            const test = () => {
-                const data = 1;
-                const d = data == '1';
-                const d1 = data === '1';
-            }
-        `,
-    )
-
-    const GlobalScope = createScope()
-    const fn = getFunctionExpression(sourceFile, 'test')!
-    const { getLocalVariables } = parseFunctionBody(fn, GlobalScope)
-    const localVar = getLocalVariables()
-    expect(localVar['d']?.currentType?.toString()).toBe('boolean')
-    expect(localVar['d1']?.currentType?.toString()).toBe('boolean')
-    // 待后续 const 补充
-    expect(localVar['data']?.currentType?.toString()).toBe('number')
-  })
-
   test('对象展开语法拷贝类型推断', () => {
     const sourceFile = project.createSourceFile(
       `${getUuid()}.ts`,
@@ -667,5 +605,85 @@ describe('对象属性可选', () => {
     expect(localVariables['obj2']?.toString()).toBe(
       '{ name: number, vv?: any }',
     )
+  })
+})
+
+describe('操作符推断', () => {
+  const project = new Project()
+  test('操作符或 ||', () => {
+    const sourceFile = project.createSourceFile(
+      `${getUuid()}.ts`,
+      `
+            const test = () => {
+                let oo = [1,2,3,4];
+                let b = oo || true; 
+            }
+        `,
+    )
+
+    const GlobalScope = createScope()
+    const fn = getFunctionExpression(sourceFile, 'test')!
+    const { getLocalVariables } = parseFunctionBody(fn, GlobalScope)
+    const localVar = getLocalVariables()
+    expect(localVar['b']?.currentType?.toString()).toBe('number[] | boolean')
+  })
+
+  test('操作符+', () => {
+    const sourceFile = project.createSourceFile(
+      `${getUuid()}.ts`,
+      `
+            const test = () => {
+                let oo = [1,2,3,4];
+                let b = true + oo;
+                let b1 = 1 + '123'; 
+                let b2 = 1 + 123;
+            }
+        `,
+    )
+
+    const GlobalScope = createScope()
+    const fn = getFunctionExpression(sourceFile, 'test')!
+    const { getLocalVariables } = parseFunctionBody(fn, GlobalScope)
+    const localVar = getLocalVariables()
+    expect(localVar['b']?.currentType?.toString()).toBe('any')
+    expect(localVar['b1']?.currentType?.toString()).toBe('string')
+    expect(localVar['b2']?.currentType?.toString()).toBe('number')
+  })
+
+  test('操作符等于以及全等推断', () => {
+    const sourceFile = project.createSourceFile(
+      `${getUuid()}.ts`,
+      `
+            const test = () => {
+                const data = 1;
+                const d = data == '1';
+                const d1 = data === '1';
+            }
+        `,
+    )
+
+    const GlobalScope = createScope()
+    const fn = getFunctionExpression(sourceFile, 'test')!
+    const { getLocalVariables } = parseFunctionBody(fn, GlobalScope)
+    const localVar = getLocalVariables()
+    expect(localVar['d']?.currentType?.toString()).toBe('boolean')
+    expect(localVar['d1']?.currentType?.toString()).toBe('boolean')
+    // 待后续 const 补充
+    expect(localVar['data']?.currentType?.toString()).toBe('number')
+  })
+
+  test('in 和 instanceof 操作符', () => {
+    const localVars = inferFunctionType(
+      `
+            function test() {
+                const data = {};
+                const d = 'name' in data;
+                const d1 = data instanceof Object;
+            }
+        `,
+      'test',
+    ).getLocalVariables()
+    expect(localVars['d']?.toString()).toBe('boolean')
+    expect(localVars['d1']?.toString()).toBe('boolean')
   })
 })

@@ -259,6 +259,8 @@ export function inferBinaryExpressionType(
       v.combine(inferPropertyAssignmentType(scope, rightToken)!)
       return v
     }
+    case SyntaxKind.InKeyword: // in
+    case SyntaxKind.InstanceOfKeyword: // instanceof
     case SyntaxKind.PlusToken: // +
     case SyntaxKind.MinusToken: // -
     case SyntaxKind.AsteriskToken: // *
