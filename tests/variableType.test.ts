@@ -647,4 +647,25 @@ describe('对象属性可选', () => {
       '{ a?: { b?: { c?: any } } }',
     )
   })
+
+  test('对象新增属性，可选推断', () => {
+    const localVariables = inferFunctionType(
+      `const test = () => {
+                const obj = {}
+                let obj2 = { name: 1 }
+                obj.a = obj2;
+                let c = obj2.vv;
+                let f  = obj?.w?.e;
+            }
+        `,
+      'test',
+    ).getLocalVariables()
+    expect(localVariables['c']?.toString()).toBe('any')
+    expect(localVariables['obj']?.toString()).toBe(
+      '{ a?: { name: number, vv?: any }, w?: { e?: any } }',
+    )
+    expect(localVariables['obj2']?.toString()).toBe(
+      '{ name: number, vv?: any }',
+    )
+  })
 })

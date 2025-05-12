@@ -142,7 +142,7 @@ export function parseFunctionBody(
       }
     }
   }
-
+  // 值修改 n = 1 | a.b.c = 2
   function toBinaryExpression(
     node: Node<ts.Node>,
     traversal: ForEachDescendantTraversalControl,

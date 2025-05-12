@@ -105,12 +105,14 @@ export function getVariablePropertyValue(
   let index = 1,
     next = rootVariable!
   while (index < propertyAccess.length && next) {
-    const { name: attrKey, questionDotToken: questionDot } =
-      propertyAccess[index]!
+    const { name: attrKey } = propertyAccess[index]!
     const current = next?.get(attrKey)
     if (!current) {
+      /**
+       * 未查询到属性类型，推导属性可选
+       */
       const attrKeyType = createVariable(new AnyType(), {
-        questionDotToken: questionDot,
+        questionDot: true,
       })
       next.combine(
         createVariable(

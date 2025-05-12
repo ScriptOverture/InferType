@@ -1,6 +1,6 @@
 import { BasicType } from '../lib/NodeType.ts'
 import type { Ref, RefReturn } from '../utils'
-import { type Node, ts, VariableDeclarationKind } from 'ts-morph'
+import { VariableDeclarationKind } from 'ts-morph'
 
 export type Variable = {
   ref: VariableTypeRef
@@ -25,5 +25,5 @@ export type VariableOptions = {
   // 申明标识
   declarationKind?: VariableDeclarationKind
   // 可选
-  questionDotToken?: Node<ts.QuestionDotToken>
+  questionDot?: boolean
 }

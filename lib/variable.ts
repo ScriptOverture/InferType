@@ -12,7 +12,7 @@ export function createVariable(
   iType: Ref<BasicType> | BasicType = new AnyType(),
   variableOptions: VariableOptions = {},
 ): Variable {
-  const { declarationKind = VariableDeclarationKind.Let, questionDotToken } =
+  const { declarationKind = VariableDeclarationKind.Let, questionDot } =
     variableOptions || {}
   const [typeRef, setTypeRef] = createRef<BasicType>()
   if (isRef(iType)) {
@@ -24,7 +24,7 @@ export function createVariable(
   const self = {
     setTypeRef,
     isVariableMutable: () => isVariableMutable(typeRef, declarationKind),
-    hasQuestionDot: () => !!questionDotToken,
+    hasQuestionDot: () => !!questionDot,
     get ref() {
       return typeRef
     },
