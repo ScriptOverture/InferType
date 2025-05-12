@@ -631,3 +631,20 @@ describe('函数scope变量类型', () => {
     expect(localVar['args']?.toString()).toBe('number[]')
   })
 })
+
+describe('对象属性可选', () => {
+  test('变量赋值，rhs可选类型推断', () => {
+    const localVariables = inferFunctionType(
+      `const test = () => {
+                const obj = {}
+                let x = obj?.a?.b?.c;
+            }
+        `,
+      'test',
+    ).getLocalVariables()
+    expect(localVariables['x']?.toString()).toBe('any')
+    expect(localVariables['obj']?.toString()).toBe(
+      '{ a?: { b?: { c?: any } } }',
+    )
+  })
+})

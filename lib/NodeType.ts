@@ -1,7 +1,12 @@
 import type { Variable } from '../types/variable'
 import type { ParameterItem } from '../types/typeCompatibility'
 import { SyntaxKind } from 'ts-morph'
-import { getIdentifierStr, isString, mergeBasicTypeList } from '../utils'
+import {
+  getIdentifierStr,
+  isString,
+  isVariable,
+  mergeBasicTypeList,
+} from '../utils'
 
 // 基础类型抽象
 export abstract class BasicType {
@@ -180,7 +185,12 @@ export class ObjectType extends BasicType {
 
   toString() {
     const props = Object.entries(this.properties)
-      .map(([k, v]) => `${k}: ${v}`)
+      .map(([k, v]) => {
+        if (isVariable(v)) {
+          return `${k}${v?.hasQuestionDot() ? '?' : ''}: ${v}`
+        }
+        return `${k}: ${v}`
+      })
       .join(', ')
 
     return `{ ${props} }`

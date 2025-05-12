@@ -94,6 +94,7 @@ export function parseFunctionBody(
     const varDecl = node.asKindOrThrow(SyntaxKind.VariableDeclaration)
     const nameNode = varDecl.getNameNode()
     const varDeclKind = inferVariableDeclareType(varDecl)
+    const initializer = varDecl.getInitializer()!
 
     switch (nameNode.getKind()) {
       // 对象解构：例如 const { name, data } = props;
@@ -101,7 +102,6 @@ export function parseFunctionBody(
         const bindingPattern = nameNode.asKindOrThrow(
           SyntaxKind.ObjectBindingPattern,
         )
-        const initializer = varDecl.getInitializerOrThrow()
         inferObjectBindingPatternType(
           scope,
           bindingPattern,
@@ -116,7 +116,6 @@ export function parseFunctionBody(
         const bindingPattern = nameNode.asKindOrThrow(
           SyntaxKind.ArrayBindingPattern,
         )
-        const initializer = varDecl.getInitializerOrThrow()
         inferArrayBindingPattern(
           scope,
           bindingPattern,
@@ -128,8 +127,9 @@ export function parseFunctionBody(
       }
       // 简单别名赋值：例如 const copyProps = props;
       case SyntaxKind.Identifier: {
-        const initializer = varDecl.getInitializer()
-        const newType = createVariable(new AnyType(), varDeclKind)
+        const newType = createVariable(new AnyType(), {
+          declarationKind: varDeclKind,
+        })
         scope.createLocalVariable(nameNode.getText(), newType)
         if (!initializer) return
         const rhsType = inferenceType(scope, initializer, traversal)

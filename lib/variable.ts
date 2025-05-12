@@ -1,7 +1,7 @@
 import type { Ref } from '../utils'
 import { createRef, isRef } from '../utils'
 import { AnyType, BasicType, ObjectType, TypeMatch } from './NodeType'
-import { type Variable } from '../types/variable.ts'
+import type { Variable, VariableOptions } from '../types/variable.ts'
 import {
   getBasicTypeToVariable,
   getVariableToBasicType,
@@ -10,8 +10,10 @@ import { VariableDeclarationKind } from 'ts-morph'
 
 export function createVariable(
   iType: Ref<BasicType> | BasicType = new AnyType(),
-  declarationKind: VariableDeclarationKind = VariableDeclarationKind.Let,
+  variableOptions: VariableOptions = {},
 ): Variable {
+  const { declarationKind = VariableDeclarationKind.Let, questionDotToken } =
+    variableOptions || {}
   const [typeRef, setTypeRef] = createRef<BasicType>()
   if (isRef(iType)) {
     setTypeRef(iType.current!)
@@ -22,6 +24,7 @@ export function createVariable(
   const self = {
     setTypeRef,
     isVariableMutable: () => isVariableMutable(typeRef, declarationKind),
+    hasQuestionDot: () => !!questionDotToken,
     get ref() {
       return typeRef
     },

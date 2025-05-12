@@ -1,8 +1,6 @@
 import {
   Expression,
   type ExpressionedNode,
-  type FunctionDeclaration,
-  type FunctionExpression,
   Node,
   ParameterDeclaration,
   PropertyAccessExpression,
@@ -16,9 +14,11 @@ import type {
   ParameterMap,
 } from '../types/typeCompatibility.ts'
 import { createVariable } from '../lib/variable.ts'
-import { ArrayType, ObjectType } from '../lib/NodeType.ts'
+import { AnyType, ArrayType, ObjectType } from '../lib/NodeType.ts'
 import type { Scope } from '../types/scope.ts'
 import type { Variable } from '../types/variable.ts'
+import type { FunctionNode } from '../types/parser.ts'
+import type { Property } from '../types/parameters.ts'
 
 // 获取函数所有参数
 export function getFuncAllParametersType(
@@ -71,27 +71,33 @@ export function getFuncAllParametersType(
  * ->output: [x,a1,a2,a3]
  * @param expr
  */
-export function getPropertyAccessList(expr: PropertyAccessExpression) {
-  const result = []
+export function getPropertyAccessList(
+  expr: PropertyAccessExpression,
+): Property[] {
+  const result: Property[] = []
   let next: Node = expr
   while (Node.isPropertyAccessExpression(next)) {
-    const attrKey = next.getName()
-    result.unshift(attrKey)
+    result.unshift({
+      name: next.getName(),
+      questionDotToken: next.getQuestionDotTokenNode(),
+    })
     next = getExpression(next)
   }
   if (Node.isIdentifier(next)) {
-    result.unshift(next.getText())
+    result.unshift({
+      name: next.getText(),
+      questionDotToken: undefined,
+    })
   }
-
   return result
 }
 
 // 根据参选链路，作用域遍历查询类型
 export function getVariablePropertyValue(
   scope: Scope,
-  propertyAccess: string[],
+  propertyAccess: Property[],
 ): Variable | undefined {
-  const root = propertyAccess[0]
+  const { name: root } = propertyAccess[0]!
   const rootVariable = scope.find(root!)
   if (propertyAccess.length === 1) {
     return rootVariable
@@ -99,10 +105,13 @@ export function getVariablePropertyValue(
   let index = 1,
     next = rootVariable!
   while (index < propertyAccess.length && next) {
-    const attrKey = propertyAccess[index]!
+    const { name: attrKey, questionDotToken: questionDot } =
+      propertyAccess[index]!
     const current = next?.get(attrKey)
     if (!current) {
-      const attrKeyType = createVariable()
+      const attrKeyType = createVariable(new AnyType(), {
+        questionDotToken: questionDot,
+      })
       next.combine(
         createVariable(
           new ObjectType({
@@ -141,8 +150,7 @@ export function getFunctionExpression(
   sourceFile: SourceFile,
   targetFuncName: string,
 ) {
-  let iFunction: FunctionExpression | FunctionDeclaration =
-    sourceFile.getFunction(targetFuncName)!
+  let iFunction: FunctionNode = sourceFile.getFunction(targetFuncName)!
   if (!iFunction) {
     // 获取变量声明（即函数表达式所在的位置）
     const variableDeclaration =

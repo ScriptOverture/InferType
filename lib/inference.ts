@@ -489,15 +489,14 @@ export function inferArrayBindingPattern(
       if (TypeMatch.isTupleType(rhsType)) {
         scope.createLocalVariable(
           originName,
-          createVariable(
-            new TupleType(rhsType.elementsType.slice(index)),
+          createVariable(new TupleType(rhsType.elementsType.slice(index)), {
             declarationKind,
-          ),
+          }),
         )
       } else {
         scope.createLocalVariable(
           originName,
-          createVariable(targetTuple, declarationKind),
+          createVariable(targetTuple, { declarationKind }),
         )
       }
 
@@ -509,7 +508,7 @@ export function inferArrayBindingPattern(
     if (TypeMatch.isTupleType(targetTuple)) {
       targetType = getBasicTypeToVariable(targetTuple.getIndexType(index)!)
     } else if (TypeMatch.isArrayType(targetTuple)) {
-      targetType = createVariable(targetTuple.elementType, declarationKind)
+      targetType = createVariable(targetTuple.elementType, { declarationKind })
     }
 
     if (!targetType) {
@@ -517,7 +516,7 @@ export function inferArrayBindingPattern(
       if (initializer) {
         targetType = inferenceType(scope, initializer, traversal)!
       } else {
-        targetType = createVariable(new AnyType(), declarationKind)
+        targetType = createVariable(new AnyType(), { declarationKind })
       }
     }
 
@@ -565,7 +564,7 @@ export function inferObjectBindingPatternType(
         }, {})
         scope.createLocalVariable(
           originName,
-          createVariable(new ObjectType(othersType), declarationKind),
+          createVariable(new ObjectType(othersType), { declarationKind }),
         )
       }
 
@@ -583,14 +582,14 @@ export function inferObjectBindingPatternType(
       if (initializer) {
         attrType = inferenceType(scope, initializer, traversal)!
       } else {
-        attrType = createVariable(new AnyType(), declarationKind)
+        attrType = createVariable(new AnyType(), { declarationKind })
       }
     } else {
       hasQueryVariable = true
       /**
        * 更新申明标识 / declarationKind
        */
-      attrType = createVariable(attrType.currentType, declarationKind)
+      attrType = createVariable(attrType.currentType, { declarationKind })
     }
 
     // 別名

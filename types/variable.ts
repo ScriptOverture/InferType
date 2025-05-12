@@ -1,5 +1,6 @@
 import { BasicType } from '../lib/NodeType.ts'
 import type { Ref, RefReturn } from '../utils'
+import { type Node, ts, VariableDeclarationKind } from 'ts-morph'
 
 export type Variable = {
   ref: VariableTypeRef
@@ -12,8 +13,17 @@ export type Variable = {
   shallowCopy: () => Variable
   // 申明是否可变
   isVariableMutable: () => boolean
+  // 申明属性是否可选
+  hasQuestionDot: () => boolean
 }
 
 export type ObjectVariable<T extends string = string> = Record<T, Variable>
 
 export type VariableTypeRef = Ref<BasicType>
+
+export type VariableOptions = {
+  // 申明标识
+  declarationKind?: VariableDeclarationKind
+  // 可选
+  questionDotToken?: Node<ts.QuestionDotToken>
+}
