@@ -643,6 +643,7 @@ export function inferCaseBlock(scope: Scope, node: CaseBlock): CaseBlockResult {
   const clauses = node.getClauses()
   const caseTypes: BasicType[] = [],
     caseReturnTypes: BasicType[] = []
+  let hasDefaultClause = false
   clauses.forEach((clause) => {
     const statement = clause.getStatements().at(0)!
     let returnStatement
@@ -662,6 +663,8 @@ export function inferCaseBlock(scope: Scope, node: CaseBlock): CaseBlockResult {
       caseTypes.push(
         inferPropertyAssignmentType(scope, getExpression(clause))?.currentType!,
       )
+    } else if (Node.isDefaultClause(clause)) {
+      hasDefaultClause = true
     }
   })
 
@@ -670,5 +673,6 @@ export function inferCaseBlock(scope: Scope, node: CaseBlock): CaseBlockResult {
     caseReturnTypeVariable: getBasicTypeToVariable(
       mergeBasicTypeList(caseReturnTypes),
     ),
+    returnIsAllMatch: hasDefaultClause,
   }
 }

@@ -10,4 +10,8 @@ export type CaseBlockResult = {
    * 所有 case return 类型
    */
   caseReturnTypeVariable: Variable
+  /**
+   * 所有 case return 是否都命中； 命中 true, 否则 false
+   */
+  returnIsAllMatch: boolean
 }

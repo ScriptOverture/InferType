@@ -22,9 +22,9 @@ import type {
   FunctionRecord,
 } from '../types/parser.ts'
 import type { Scope } from '../types/scope.ts'
-import type { Variable } from '../types/variable.ts'
-import { getExpression, unwrapParentheses } from '../utils/parameters.ts'
-import { AnyType, PromiseType } from './NodeType.ts'
+import { getExpression } from '../utils/parameters.ts'
+import { AnyType } from './NodeType.ts'
+import { useGetReturnStatementType } from '../hooks'
 
 // 获取函数信息
 function getFunctionRecord(iFunction: FunctionNode): FunctionRecord {
@@ -54,8 +54,7 @@ export function parseFunctionBody(
   const { params, body, returnStatement, hasAsyncToken } =
     getFunctionRecord(funNode)
   const scope = createScope(params, {}, scopePrototype)
-  const [returnStatementType, setReturnStatementType] =
-    createRef<Variable>(createVariable())
+  const returnVariableRecords = useGetReturnStatementType(createVariable())
   const [bodyCacheRecord, setBodyCacheRecord] = createRef({
     firstParseIfStatement: true,
   })
@@ -86,7 +85,12 @@ export function parseFunctionBody(
 
   return {
     getParamsType: () => scope.paramsMap,
-    getReturnType: getFunctionReturnType,
+    getReturnType: () =>
+      returnVariableRecords.getFunctionReturnType(
+        funNode,
+        scope,
+        !!hasAsyncToken,
+      ),
     getParamsList: () => scope.getParamsList(),
     getLocalVariables: () => scope.getLocalVariables(),
   }
@@ -161,7 +165,8 @@ export function parseFunctionBody(
         scope,
         node.asKindOrThrow(SyntaxKind.IfStatement),
       )
-      setReturnStatementType((prev) => prev.combine(allReturn))
+      // 有问题哦
+      returnVariableRecords.dispatchReturnType(allReturn, true)
       setBodyCacheRecord((el) => ({ ...el, firstParseIfStatement: false }))
     }
   }
@@ -174,12 +179,13 @@ export function parseFunctionBody(
       scope,
       getExpression(switchStatement),
     )
-    const { caseTypeVariable, caseReturnTypeVariable } = inferCaseBlock(
-      scope,
-      switchStatement.getCaseBlock(),
-    )
+    const { caseTypeVariable, caseReturnTypeVariable, returnIsAllMatch } =
+      inferCaseBlock(scope, switchStatement.getCaseBlock())
     expressionVariable?.combine(caseTypeVariable)
-    setReturnStatementType((prev) => prev.combine(caseReturnTypeVariable))
+    returnVariableRecords.dispatchReturnType(
+      caseReturnTypeVariable,
+      returnIsAllMatch,
+    )
   }
 
   function toReturnStatement(
@@ -190,33 +196,10 @@ export function parseFunctionBody(
     // 是当前函数的返回语句
     if (returnStatement === returnNode) {
       const expression = getExpression(returnNode)
-      setReturnStatementType((prev) =>
-        prev.combine(inferenceType(scope, expression, traversal)!),
+      returnVariableRecords.dispatchReturnType(
+        inferenceType(scope, expression, traversal)!,
+        true,
       )
     }
-  }
-
-  function getFunctionReturnType() {
-    let result
-    // 箭头函数
-    if (Node.isArrowFunction(funNode)) {
-      const eqGtToken = funNode.getEqualsGreaterThan()
-      const nextNode = eqGtToken.getNextSibling()!
-      // 函数显示返回类型
-      if (Node.isBlock(nextNode)) {
-        result = returnStatementType.current
-      } else {
-        result = inferPropertyAssignmentType(scope, unwrapParentheses(nextNode))
-      }
-    }
-    // 普通函数
-    else {
-      result = returnStatementType.current
-    }
-
-    if (hasAsyncToken) {
-      return createVariable(new PromiseType(result?.currentType))
-    }
-    return result
   }
 }

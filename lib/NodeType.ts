@@ -240,6 +240,14 @@ export class UnionType extends BasicType {
     return new UnionType(newTypes)
   }
 
+  removeType(targetType: BasicType | ((targetType: BasicType) => boolean)) {
+    if (typeof targetType === 'function') {
+      this.types = this.types.filter((x) => !targetType(x))
+    } else {
+      this.types = this.types.filter((x) => x !== targetType)
+    }
+  }
+
   private normalizeTypes(types: BasicType[]): BasicType[] {
     const seen = new Set<string>()
     return types.reduce<BasicType[]>((acc, t) => {
@@ -300,4 +308,6 @@ export const TypeMatch = {
   isTupleType: (type: unknown): type is TupleType => type instanceof TupleType,
   isArrayType: (type: unknown): type is ArrayType => type instanceof ArrayType,
   isUnionType: (type: unknown): type is UnionType => type instanceof UnionType,
+  isUndefinedType: (type: unknown): type is UndefinedType =>
+    type instanceof UndefinedType,
 }
