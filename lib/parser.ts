@@ -14,6 +14,7 @@ import {
   inferIfStatement,
   inferPropertyAssignmentType,
   inferVariableDeclareType,
+  inferCaseBlock,
 } from './inference.ts'
 import type {
   FunctionNode,
@@ -76,6 +77,9 @@ export function parseFunctionBody(
         break
       case SyntaxKind.IfStatement:
         toIfStatement(node)
+        break
+      case SyntaxKind.SwitchStatement:
+        toSwitchStatement(node)
         break
     }
   })
@@ -162,39 +166,20 @@ export function parseFunctionBody(
     }
   }
 
-  function toCallExpression() {
-    // const callExpression = node.asKindOrThrow(SyntaxKind.CallExpression)
-    // const expression = getExpression(callExpression)
-    // const propertyAccessExpression = expression.asKindOrThrow(
-    //   SyntaxKind.PropertyAccessExpression,
-    // )
-    // const methodName = propertyAccessExpression.getName()
-    // switch (methodName) {
-    //   case 'map':
-    //   case 'forEach':
-    //     const firstArrowFunction = callExpression
-    //       .getArguments()
-    //       .at(0)
-    //       ?.asKindOrThrow(SyntaxKind.ArrowFunction)
-    //     if (firstArrowFunction) {
-    //       const firstParamName = firstArrowFunction
-    //         .getParameters()[0]
-    //         ?.getName()
-    //       const funParamsType = parseFunctionBody(
-    //         firstArrowFunction,
-    //         scope,
-    //       )?.getParamsType()
-    //       const arrowFunctionPropsType = funParamsType[firstParamName!]
-    //
-    //       getVariablePropertyValue(
-    //         scope,
-    //         getPropertyAccessList(getExpression(expression)),
-    //       )?.combine(
-    //         createVariable(new ArrayType(arrowFunctionPropsType?.currentType)),
-    //       )
-    //     }
-    //     break
-    // }
+  function toCallExpression() {}
+
+  function toSwitchStatement(node: Node<ts.Node>) {
+    const switchStatement = node.asKindOrThrow(SyntaxKind.SwitchStatement)
+    const expressionVariable = inferPropertyAssignmentType(
+      scope,
+      getExpression(switchStatement),
+    )
+    const { caseTypeVariable, caseReturnTypeVariable } = inferCaseBlock(
+      scope,
+      switchStatement.getCaseBlock(),
+    )
+    expressionVariable?.combine(caseTypeVariable)
+    setReturnStatementType((prev) => prev.combine(caseReturnTypeVariable))
   }
 
   function toReturnStatement(

@@ -568,6 +568,50 @@ describe('函数scope变量类型', () => {
     expect(localVar['b']?.toString()).toBe('number')
     expect(localVar['args']?.toString()).toBe('number[]')
   })
+
+  test('switch 不同case 类型推断', () => {
+    const { getLocalVariables } = inferFunctionType(
+      `const test = () => {
+              const obj = {}
+              switch ((obj.name)) {
+                  case 'xx': 
+                      return 1
+                  case 1: {
+                          break
+                  }
+                  default: {}
+              }
+            }
+        `,
+      'test',
+    )
+    const localVar = getLocalVariables()
+    expect(localVar['obj']?.toString()).toBe('{ name?: string | number }')
+  })
+
+  test('switch 不同case return类型推断', () => {
+    const { getReturnType } = inferFunctionType(
+      `const test = () => {
+              const obj = {}
+              switch ((obj.name)) {
+                  case 'xx': 
+                      return 1
+                  case 1: {
+                      return obj
+                          break
+                  }
+                  default: 
+                    return "xxx" 
+              }
+            }
+        `,
+      'test',
+    )
+    const returnType = getReturnType()
+    expect(returnType?.toString()).toBe(
+      'number | { name?: string | number } | string',
+    )
+  })
 })
 
 describe('对象属性可选', () => {

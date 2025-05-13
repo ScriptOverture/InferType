@@ -16,6 +16,7 @@ import {
   type SpreadElement,
   VariableDeclarationKind,
   type VariableDeclaration,
+  CaseBlock,
 } from 'ts-morph'
 import type { ObjectVariable, Variable } from '../types/variable.ts'
 import { createVariable } from './variable.ts'
@@ -29,10 +30,11 @@ import {
   TypeMatch,
   UndefinedType,
   AnyType,
+  BasicType,
 } from './NodeType.ts'
 import type { Scope } from '../types/scope.ts'
 import { parseFunctionBody } from './parser.ts'
-import { getIdentifierStr } from '../utils'
+import { getIdentifierStr, mergeBasicTypeList } from '../utils'
 import {
   basicTypeToVariable,
   getBasicTypeToVariable,
@@ -47,6 +49,7 @@ import {
   getVariablePropertyValue,
   unwrapParentheses,
 } from '../utils/parameters.ts'
+import type { CaseBlockResult } from '../types/inference.ts'
 
 export function inferPropertyAssignmentType(
   scope: Scope,
@@ -633,4 +636,39 @@ export function inferFunctionType(sourceStr: string, targetFuncName: string) {
     getFunctionExpression(sourceFile, targetFuncName),
     GlobalScope,
   )
+}
+
+// 推断 switch 下所有 case
+export function inferCaseBlock(scope: Scope, node: CaseBlock): CaseBlockResult {
+  const clauses = node.getClauses()
+  const caseTypes: BasicType[] = [],
+    caseReturnTypes: BasicType[] = []
+  clauses.forEach((clause) => {
+    const statement = clause.getStatements().at(0)!
+    let returnStatement
+    if (Node.isReturnStatement(statement)) {
+      returnStatement = statement
+    } else if (Node.isBlock(statement)) {
+      returnStatement = statement.getStatement(Node.isReturnStatement)
+    }
+    if (returnStatement) {
+      caseReturnTypes.push(
+        inferPropertyAssignmentType(scope, getExpression(returnStatement))
+          ?.currentType!,
+      )
+    }
+
+    if (Node.isCaseClause(clause)) {
+      caseTypes.push(
+        inferPropertyAssignmentType(scope, getExpression(clause))?.currentType!,
+      )
+    }
+  })
+
+  return {
+    caseTypeVariable: getBasicTypeToVariable(mergeBasicTypeList(caseTypes)),
+    caseReturnTypeVariable: getBasicTypeToVariable(
+      mergeBasicTypeList(caseReturnTypes),
+    ),
+  }
 }
