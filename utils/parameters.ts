@@ -11,12 +11,11 @@ import {
 import type {
   FunctionParameters,
   ParameterItem,
-  ParameterMap,
 } from '../types/typeCompatibility.ts'
 import { createVariable } from '../lib/variable.ts'
 import { AnyType, ArrayType, ObjectType } from '../lib/NodeType.ts'
 import type { Scope } from '../types/scope.ts'
-import type { Variable } from '../types/variable.ts'
+import type { ObjectVariable, Variable } from '../types/variable.ts'
 import type { FunctionNode } from '../types/parser.ts'
 import type { Property } from '../types/parameters.ts'
 
@@ -25,7 +24,7 @@ export function getFuncAllParametersType(
   params: ParameterDeclaration[],
 ): FunctionParameters {
   const parameterList: ParameterItem[] = Array(params.length)
-  const paramsMap: ParameterMap = {}
+  const paramsMap: ObjectVariable = {}
 
   params.forEach((paramsItem, index) => {
     const paramName = paramsItem.getName()
@@ -43,7 +42,7 @@ export function getFuncAllParametersType(
     // 参数解构
     else if (Node.isObjectBindingPattern(paramNode)) {
       const elements = paramNode.getElements()
-      const paramObjs: ParameterMap = {}
+      const paramObjs: ObjectVariable = {}
       elements.forEach((item) => {
         const name = item.getText()
         paramObjs[name] = createVariable()
