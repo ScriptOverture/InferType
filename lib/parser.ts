@@ -4,7 +4,6 @@ import {
   ts,
   type ForEachDescendantTraversalControl,
 } from 'ts-morph'
-import { createRef } from '../utils'
 import { createScope } from './scope.ts'
 import { createVariable } from './variable.ts'
 import {
@@ -23,23 +22,44 @@ import type {
 } from '../types/parser.ts'
 import type { Scope } from '../types/scope.ts'
 import { getExpression } from '../utils/parameters.ts'
-import { AnyType } from './NodeType.ts'
-import { useGetReturnStatementType } from '../hooks'
+import { AnyType, UndefinedType } from './NodeType.ts'
+import { getFunctionReturnType, useGetReturnStatementType } from '../hooks'
+import type { Variable } from '../types/variable.ts'
 
 // 获取函数信息
 function getFunctionRecord(iFunction: FunctionNode): FunctionRecord {
   return {
-    body: iFunction!.getBody(),
-    params: iFunction?.getParameters()!,
+    body: iFunction.getBody(),
+    params: iFunction.getParameters(),
     returnStatement: iFunction
       ?.getBody()
       ?.asKind(SyntaxKind.Block)
-      ?.getStatement((node) => node.getKind() === SyntaxKind.ReturnStatement),
-    propertyAccesses: iFunction?.getDescendantsOfKind(
+      ?.getStatement(Node.isReturnStatement),
+    propertyAccesses: iFunction.getDescendantsOfKind(
       SyntaxKind.PropertyAccessExpression,
     ),
     hasAsyncToken: iFunction.getModifiers().at(0),
   }
+}
+
+type NodeVisitor = (
+  node: Node<ts.Node>,
+  traversal: ForEachDescendantTraversalControl,
+) => void
+
+type SyntaxVisitorMap = Partial<Record<SyntaxKind, NodeVisitor>>
+
+export function traverseSyntaxTree(
+  node: Node<ts.Node>,
+  visitors: SyntaxVisitorMap,
+) {
+  node.forEachDescendant((child, traversal) => {
+    const kind = child.getKind()
+    const visitor = visitors[kind]
+    if (visitor) {
+      visitor(child, traversal)
+    }
+  })
 }
 
 /**
@@ -51,51 +71,64 @@ export function parseFunctionBody(
   funNode: FunctionNode,
   scopePrototype?: Scope,
 ): ParseFunctionBodyResult {
-  const { params, body, returnStatement, hasAsyncToken } =
-    getFunctionRecord(funNode)
-  const scope = createScope(params, {}, scopePrototype)
-  const returnVariableRecords = useGetReturnStatementType(createVariable())
-  const [bodyCacheRecord, setBodyCacheRecord] = createRef({
-    firstParseIfStatement: true,
-  })
-
-  body?.forEachDescendant((node, traversal) => {
-    switch (node.getKind()) {
-      // 变量申明
-      case SyntaxKind.VariableDeclaration:
-        toVariableDeclaration(node, traversal)
-        break
-      case SyntaxKind.BinaryExpression:
-        toBinaryExpression(node, traversal)
-        break
-      case SyntaxKind.CallExpression:
-        toCallExpression()
-        break
-      case SyntaxKind.ReturnStatement:
-        toReturnStatement(node, traversal)
-        break
-      case SyntaxKind.IfStatement:
-        toIfStatement(node)
-        break
-      case SyntaxKind.SwitchStatement:
-        toSwitchStatement(node)
-        break
-    }
-  })
+  const { params, body, hasAsyncToken } = getFunctionRecord(funNode)
+  if (!body) throw new Error('body must be a function')
+  const scope = createScope(scopePrototype, params, {})
+  const { getBlockReturnVariable } = parseBlockNode(scope, body)
 
   return {
     getParamsType: () => scope.paramsMap,
     getReturnType: () =>
-      returnVariableRecords.getFunctionReturnType(
+      getFunctionReturnType(
         funNode,
         scope,
+        getBlockReturnVariable(),
         !!hasAsyncToken,
       ),
     getParamsList: () => scope.getParamsList(),
     getLocalVariables: () => scope.getLocalVariables(),
   }
+}
+
+type ParseBlockResult = {
+  getBlockReturnVariable: () => Variable
+  isAllReturnsReadyState: () => boolean
+}
+
+/**
+ * 解析块级作用域
+ * @param scope
+ * @param blockNode
+ */
+export function parseBlockNode(
+  scope: Scope,
+  blockNode: Node<ts.Node>,
+): ParseBlockResult {
+  const defaultReturnVariable = createVariable(new UndefinedType())
+  const returnVariableRecords = useGetReturnStatementType(defaultReturnVariable)
+  function createVisitors(scope: Scope) {
+    return {
+      [SyntaxKind.VariableDeclaration]: toVariableDeclaration.bind(null, scope),
+      [SyntaxKind.BinaryExpression]: toBinaryExpression.bind(null, scope),
+      // [SyntaxKind.CallExpression]: toCallExpression.bind(null, scope),
+      [SyntaxKind.ReturnStatement]: toReturnStatement.bind(null, scope),
+      [SyntaxKind.IfStatement]: toIfStatement.bind(null, scope),
+      [SyntaxKind.SwitchStatement]: toSwitchStatement.bind(null, scope),
+    }
+  }
+
+  if (blockNode) {
+    traverseSyntaxTree(blockNode, createVisitors(scope))
+  }
+
+  return {
+    getBlockReturnVariable: () => returnVariableRecords.getBlockReturnType()!,
+    // getFunctionReturnType: returnVariableRecords.getFunctionReturnType,
+    isAllReturnsReadyState: returnVariableRecords.isAllReturnsReadyState,
+  }
 
   function toVariableDeclaration(
+    scope: Scope,
     node: Node<ts.Node>,
     traversal: ForEachDescendantTraversalControl,
   ) {
@@ -152,6 +185,7 @@ export function parseFunctionBody(
   }
   // 值修改 n = 1 | a.b.c = 2
   function toBinaryExpression(
+    scope: Scope,
     node: Node<ts.Node>,
     traversal: ForEachDescendantTraversalControl,
   ) {
@@ -159,26 +193,35 @@ export function parseFunctionBody(
     inferenceType(scope, binExp, traversal)
   }
 
-  function toIfStatement(node: Node<ts.Node>) {
-    if (bodyCacheRecord.current?.firstParseIfStatement) {
-      const allReturn = inferIfStatement(
-        scope,
-        node.asKindOrThrow(SyntaxKind.IfStatement),
-      )
-      // 有问题哦
-      returnVariableRecords.dispatchReturnType(allReturn, true)
-      setBodyCacheRecord((el) => ({ ...el, firstParseIfStatement: false }))
-    }
+  function toIfStatement(
+    scope: Scope,
+    node: Node<ts.Node>,
+    traversal: ForEachDescendantTraversalControl,
+  ) {
+    traversal?.skip()
+    const { returnTypeVariable, returnIsAllMatch } = inferIfStatement(
+      scope,
+      node.asKindOrThrow(SyntaxKind.IfStatement),
+    )
+    returnVariableRecords.dispatchReturnType(
+      returnTypeVariable,
+      returnIsAllMatch,
+    )
   }
 
-  function toCallExpression() {}
-
-  function toSwitchStatement(node: Node<ts.Node>) {
+  function toSwitchStatement(
+    scope: Scope,
+    node: Node<ts.Node>,
+    traversal: ForEachDescendantTraversalControl,
+  ) {
     const switchStatement = node.asKindOrThrow(SyntaxKind.SwitchStatement)
+    traversal?.skip()
+    // switch 判断语句
     const expressionVariable = inferPropertyAssignmentType(
       scope,
       getExpression(switchStatement),
     )
+
     const { caseTypeVariable, caseReturnTypeVariable, returnIsAllMatch } =
       inferCaseBlock(scope, switchStatement.getCaseBlock())
     expressionVariable?.combine(caseTypeVariable)
@@ -188,18 +231,20 @@ export function parseFunctionBody(
     )
   }
 
+  // 同一个块只有一个 return 生效
   function toReturnStatement(
+    scope: Scope,
     node: Node<ts.Node>,
     traversal: ForEachDescendantTraversalControl,
   ) {
     const returnNode = node.asKindOrThrow(SyntaxKind.ReturnStatement)
-    // 是当前函数的返回语句
-    if (returnStatement === returnNode) {
-      const expression = getExpression(returnNode)
-      returnVariableRecords.dispatchReturnType(
-        inferenceType(scope, expression, traversal)!,
-        true,
-      )
+    const returnVariable = inferenceType(
+      scope,
+      getExpression(returnNode),
+      traversal,
+    )
+    if (returnVariable) {
+      returnVariableRecords.dispatchReturnType(returnVariable, true)
     }
   }
 }

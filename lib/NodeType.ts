@@ -41,7 +41,7 @@ export class UndefinedType extends BasicType {
     return AllTypes.Undefined
   }
   combine(other: BasicType): BasicType {
-    return new UnionType([this, other])
+    return other
   }
 }
 
@@ -235,8 +235,8 @@ export class UnionType extends BasicType {
   combine(other: BasicType): BasicType {
     const newTypes =
       other instanceof UnionType
-        ? [...this.types, ...other.types]
-        : [...this.types, other]
+        ? this.normalizeTypes([...this.types, ...other.types])
+        : this.normalizeTypes([...this.types, other])
     return new UnionType(newTypes)
   }
 
@@ -250,14 +250,21 @@ export class UnionType extends BasicType {
 
   private normalizeTypes(types: BasicType[]): BasicType[] {
     const seen = new Set<string>()
-    return types.reduce<BasicType[]>((acc, t) => {
-      const key = t.toString()
-      if (!seen.has(key) && key !== AllTypes.Any) {
-        seen.add(key)
-        acc.push(t)
-      }
-      return acc
-    }, [])
+    return types
+      .flatMap((item) => {
+        if (TypeMatch.isUnionType(item)) {
+          return item.types
+        }
+        return item
+      })
+      .reduce<BasicType[]>((acc, t) => {
+        const key = t.toString()
+        if (!seen.has(key) && key !== AllTypes.Any) {
+          seen.add(key)
+          acc.push(t)
+        }
+        return acc
+      }, [])
   }
 }
 

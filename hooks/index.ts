@@ -16,16 +16,20 @@ export function useGetReturnStatementType<T extends Variable = Variable>(
   defaultVal: T,
 ) {
   const [returnStatementType, setReturnStatementType] = createRef<T>(defaultVal)
+  let isAllReturnsReadyState = false
 
   return {
-    getFunctionReturnType,
     dispatchReturnType,
+    getBlockReturnType,
+    isAllReturnsReadyState: () => isAllReturnsReadyState,
   }
 
   function dispatchReturnType(
     targetReturnType: Variable,
     allReturnsReadyState: Boolean = false,
   ) {
+    // @ts-ignore
+    isAllReturnsReadyState = allReturnsReadyState
     setReturnStatementType((prev) => {
       /**
        * 所有 case 都有 return
@@ -43,32 +47,44 @@ export function useGetReturnStatementType<T extends Variable = Variable>(
     })
   }
 
-  function getFunctionReturnType(
-    funNode: FunctionNode,
-    scope: Scope,
-    hasAsyncToken: boolean = false,
-  ) {
-    let result
-    // 箭头函数
-    if (Node.isArrowFunction(funNode)) {
-      const eqGtToken = funNode.getEqualsGreaterThan()
-      const nextNode = eqGtToken.getNextSibling()!
-      // 函数显示返回类型
-      if (Node.isBlock(nextNode)) {
-        result = returnStatementType.current
-      } else {
-        result = inferPropertyAssignmentType(scope, unwrapParentheses(nextNode))
-      }
-    }
-    // 普通函数
-    else {
-      result = returnStatementType.current
-    }
-
-    if (hasAsyncToken) {
-      return createVariable(new PromiseType(result?.currentType))
-    }
-
-    return result
+  function getBlockReturnType() {
+    return returnStatementType.current
   }
+}
+
+/**
+ * 获取函数返回类型
+ * @param funNode
+ * @param scope
+ * @param displayReturnType
+ * @param hasAsyncToken
+ */
+export function getFunctionReturnType(
+  funNode: FunctionNode,
+  scope: Scope,
+  displayReturnType: Variable,
+  hasAsyncToken: boolean = false,
+) {
+  let result
+  // 箭头函数
+  if (Node.isArrowFunction(funNode)) {
+    const eqGtToken = funNode.getEqualsGreaterThan()
+    const nextNode = eqGtToken.getNextSibling()!
+    // 函数显示返回类型
+    if (Node.isBlock(nextNode)) {
+      result = displayReturnType
+    } else {
+      result = inferPropertyAssignmentType(scope, unwrapParentheses(nextNode))
+    }
+  }
+  // 普通函数
+  else {
+    result = displayReturnType
+  }
+
+  if (hasAsyncToken) {
+    return createVariable(new PromiseType(result?.currentType))
+  }
+
+  return result
 }

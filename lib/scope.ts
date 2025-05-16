@@ -7,9 +7,9 @@ import { getBasicTypeToVariable } from './typeCompatibility.ts'
 import { getFuncAllParametersType } from '../utils/parameters.ts'
 
 export function createScope(
+  prototype?: Scope,
   parameters: ParameterDeclaration[] = [],
   localVariables: ObjectVariable = {},
-  prototype?: Scope,
 ): Scope {
   const { parameterMap, parameterList } = getFuncAllParametersType(parameters)
   initialLocalVariables()

@@ -7,7 +7,6 @@ import {
   type ObjectLiteralExpression,
   SyntaxKind,
   Project,
-  Statement,
   type ForEachDescendantTraversalControl,
   type IfStatement,
   type ArrayBindingPattern,
@@ -28,12 +27,11 @@ import {
   TupleType,
   UnionType,
   TypeMatch,
-  UndefinedType,
   AnyType,
   BasicType,
 } from './NodeType.ts'
 import type { Scope } from '../types/scope.ts'
-import { parseFunctionBody } from './parser.ts'
+import { parseBlockNode, parseFunctionBody } from './parser.ts'
 import { getIdentifierStr, mergeBasicTypeList } from '../utils'
 import {
   basicTypeToVariable,
@@ -372,7 +370,7 @@ function inferElementAccessExpression(
 }
 
 // 推断if
-export function inferIfStatement(scope: Scope, node: IfStatement): Variable {
+export function inferIfStatement(scope: Scope, node: IfStatement) {
   const exprNode = getExpression(node)
   const thenStatementNode = node.getThenStatement()
   const elseStatementNode = node.getElseStatement()
@@ -381,72 +379,28 @@ export function inferIfStatement(scope: Scope, node: IfStatement): Variable {
    * 推断if条件判断类型
    */
   inferPropertyAssignmentType(scope, exprNode)
+  let hasDefaultClause = false
+  const returnTypes = []
+  const thenNodeBlock = parseBlockNode(
+    createScope(scope),
+    createBlockNode(thenStatementNode.getText()),
+  )
+  returnTypes.push(thenNodeBlock.getBlockReturnVariable())
 
-  // 处理 then 和 else 分支的返回类型
-  const left = dfsIfStatementReturnNode(scope, thenStatementNode)
-  const right = elseStatementNode
-    ? dfsIfStatementReturnNode(scope, elseStatementNode)
-    : new UndefinedType() // 无 else 分支时添加 undefined
-
-  const result = createVariable()
-  result.combine(left)
-  result.combine(right)
-  return result
-}
-
-/**
- * 深度遍历解析 if else
- * @param scope
- * @param node
- */
-function dfsIfStatementReturnNode(scope: Scope, node: Statement): Variable {
-  const result = createVariable()
-  if (!node) return result // 处理空节点的情况
-
-  // 处理块语句（Block）
-  if (Node.isBlock(node)) {
-    let hasAllPathsReturned = false
-    const allStatements = node.getStatements()
-    const firstReturn = allStatements.find(Node.isReturnStatement)!
-    if (firstReturn) {
-      const ifType = inferPropertyAssignmentType(
-        scope,
-        getExpression(firstReturn),
-      )
-      if (ifType) {
-        result.combine(ifType)
-        hasAllPathsReturned = true
-      } else {
-        hasAllPathsReturned = false
-      }
-    }
-
-    for (const stmt of allStatements) {
-      if (Node.isIfStatement(stmt)) {
-        // 递归处理 if 语句，并合并其返回类型
-        const ifType = inferIfStatement(scope, stmt)
-        result.combine(ifType)
-        if (!(ifType.currentType instanceof UndefinedType)) {
-          hasAllPathsReturned = true
-        }
-      }
-    }
-
-    // 若存在未覆盖的路径，添加 undefined
-    if (!hasAllPathsReturned) {
-      result.combine(new UndefinedType())
-    }
+  if (elseStatementNode) {
+    const elseNodeBlock = parseBlockNode(
+      createScope(scope),
+      createBlockNode(elseStatementNode.getText()),
+    )
+    returnTypes.push(elseNodeBlock.getBlockReturnVariable())
+    hasDefaultClause =
+      thenNodeBlock.isAllReturnsReadyState() &&
+      elseNodeBlock.isAllReturnsReadyState()
   }
-  // 处理单个 if 语句
-  else if (Node.isIfStatement(node)) {
-    result.combine(inferIfStatement(scope, node))
+  return {
+    returnTypeVariable: getBasicTypeToVariable(mergeBasicTypeList(returnTypes)),
+    returnIsAllMatch: hasDefaultClause,
   }
-  // 处理单个 return 语句
-  else if (Node.isReturnStatement(node)) {
-    result.combine(inferPropertyAssignmentType(scope, getExpression(node))!)
-  }
-
-  return result
 }
 
 // 推断类型
@@ -646,25 +600,35 @@ export function inferCaseBlock(scope: Scope, node: CaseBlock): CaseBlockResult {
   let hasDefaultClause = false
   clauses.forEach((clause) => {
     const statement = clause.getStatements().at(0)!
-    let returnStatement
-    if (Node.isReturnStatement(statement)) {
-      returnStatement = statement
-    } else if (Node.isBlock(statement)) {
-      returnStatement = statement.getStatement(Node.isReturnStatement)
-    }
-    if (returnStatement) {
-      caseReturnTypes.push(
-        inferPropertyAssignmentType(scope, getExpression(returnStatement))
-          ?.currentType!,
+    let caseReturn
+
+    if (Node.isBlock(statement)) {
+      caseReturn = parseBlockNode(
+        createScope(scope),
+        statement,
+      ).getBlockReturnVariable()
+    } else {
+      const block = createBlockNode(
+        clause.getStatements().map((item) => item.getText()),
       )
+      caseReturn = parseBlockNode(
+        createScope(scope),
+        block,
+      ).getBlockReturnVariable()
     }
 
     if (Node.isCaseClause(clause)) {
       caseTypes.push(
         inferPropertyAssignmentType(scope, getExpression(clause))?.currentType!,
       )
-    } else if (Node.isDefaultClause(clause)) {
-      hasDefaultClause = true
+    }
+
+    caseReturnTypes.push(caseReturn)
+
+    if (Node.isDefaultClause(clause)) {
+      if (!TypeMatch.isUndefinedType(clause)) {
+        hasDefaultClause = true
+      }
     }
   })
 
@@ -675,4 +639,24 @@ export function inferCaseBlock(scope: Scope, node: CaseBlock): CaseBlockResult {
     ),
     returnIsAllMatch: hasDefaultClause,
   }
+}
+
+/**
+ * 创建 BlockNode 待优化
+ * @param statements
+ */
+function createBlockNode(statements: string[] | string) {
+  const project = new Project()
+  const sourceFile = project.createSourceFile('temp.ts', '', {
+    overwrite: true,
+  })
+
+  // 我们通过创建一个临时函数，插入一个 Block
+  const func = sourceFile.addFunction({
+    name: 'wrapper',
+    statements, // 初始化为空
+  })
+
+  // 拿到函数体对应的 Block
+  return func.getBodyOrThrow()
 }
