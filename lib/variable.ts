@@ -5,7 +5,7 @@ import type { Variable, VariableOptions } from '../types/variable.ts'
 import {
   getBasicTypeToVariable,
   getVariableToBasicType,
-} from './typeCompatibility.ts'
+} from './compatibility.ts'
 import { VariableDeclarationKind } from 'ts-morph'
 
 export function createVariable(

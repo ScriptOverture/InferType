@@ -4,19 +4,16 @@ import {
   Node,
   ParameterDeclaration,
   PropertyAccessExpression,
-  type SourceFile,
-  SyntaxKind,
   ts,
 } from 'ts-morph'
 import type {
   FunctionParameters,
   ParameterItem,
-} from '../types/typeCompatibility.ts'
-import { createVariable } from '../lib/variable.ts'
-import { AnyType, ArrayType, ObjectType } from '../lib/NodeType.ts'
+} from '@@types/compatibility.ts'
+import { createVariable } from '@/variable.ts'
+import { AnyType, ArrayType, ObjectType } from '@/NodeType.ts'
 import type { Scope } from '../types/scope.ts'
 import type { ObjectVariable, Variable } from '../types/variable.ts'
-import type { FunctionNode } from '../types/parser.ts'
 import type { Property } from '../types/parameters.ts'
 
 // 获取函数所有参数
@@ -145,21 +142,4 @@ export function unwrapParentheses(node: Node): Expression {
     current = current.getExpression()
   }
   return current as Expression
-}
-
-export function getFunctionExpression(
-  sourceFile: SourceFile,
-  targetFuncName: string,
-) {
-  let iFunction: FunctionNode = sourceFile.getFunction(targetFuncName)!
-  if (!iFunction) {
-    // 获取变量声明（即函数表达式所在的位置）
-    const variableDeclaration =
-      sourceFile.getVariableDeclaration(targetFuncName)
-    const initializer = variableDeclaration?.getInitializer()
-    iFunction = variableDeclaration?.getInitializerIfKind(
-      initializer?.getKind()! as SyntaxKind.FunctionExpression,
-    )!
-  }
-  return iFunction
 }

@@ -1,15 +1,15 @@
 import { expect, test, describe } from 'bun:test'
-import { parseFunctionBody } from '../lib/parser.ts'
+import { parseFunctionBody } from '@/parser/FunctionNode.ts'
 import { Project, SyntaxKind } from 'ts-morph'
-import { createScope } from '../lib/scope'
+import { createScope } from '@/scope'
 import {
   getMockDataToFunBody,
   getMockDataToParams,
   mockParamsData,
   Parameter,
 } from './utils'
-import type { ObjectType } from '../lib/NodeType'
-import { getFunctionExpression } from '../utils/parameters.ts'
+import type { ObjectType } from '@/NodeType'
+import { getFunctionExpression } from '@/parser/utils.ts'
 // enum Function {
 //     // 函数声明
 //     FunctionDeclaration,

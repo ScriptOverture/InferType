@@ -1,10 +1,10 @@
 import { expect, test, describe } from 'bun:test'
 import { Project } from 'ts-morph'
-import { parseFunctionBody } from '../lib/parser'
-import { createScope } from '../lib/scope'
-import { TypeMatch } from '../lib/NodeType'
-import { inferFunctionType } from '../lib/inference'
-import { getFunctionExpression } from '../utils/parameters.ts'
+import { parseFunctionBody } from '@/parser/FunctionNode.ts'
+import { createScope } from '@/scope'
+import { TypeMatch } from '@/NodeType'
+import { inferFunctionType } from '@/inference'
+import { getFunctionExpression } from '@/parser/utils.ts'
 
 describe('函数返回值', () => {
   const project = new Project()

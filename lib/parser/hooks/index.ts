@@ -1,12 +1,12 @@
-import type { Variable } from '../types/variable.ts'
-import { createRef } from '../utils'
-import { PromiseType, TypeMatch, UndefinedType } from '../lib/NodeType.ts'
-import type { FunctionNode } from '../types/parser.ts'
-import type { Scope } from '../types/scope.ts'
+import type { Variable } from '@@types/variable.ts'
+import { createRef } from '@utils/index'
+import { PromiseType, TypeMatch, UndefinedType } from '@/NodeType.ts'
+import type { FunctionNode } from '@@types/parser.ts'
+import type { Scope } from '@@types/scope.ts'
 import { Node } from 'ts-morph'
-import { inferPropertyAssignmentType } from '../lib/inference.ts'
-import { unwrapParentheses } from '../utils/parameters.ts'
-import { createVariable } from '../lib/variable.ts'
+import { inferPropertyAssignmentType } from '@/inference.ts'
+import { unwrapParentheses } from '@utils/parameters.ts'
+import { createVariable } from '@/variable.ts'
 
 /**
  * 函数返回类型逻辑处理

@@ -1,4 +1,4 @@
-import { BasicType } from '../lib/NodeType.ts'
+import { BasicType } from '@/NodeType.ts'
 import type { Ref, RefReturn } from '../utils'
 import { VariableDeclarationKind } from 'ts-morph'
 

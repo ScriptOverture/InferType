@@ -30,24 +30,26 @@ import {
   AnyType,
   BasicType,
 } from './NodeType.ts'
+import { mergeBasicTypeList } from './compatibility.ts'
 import type { Scope } from '../types/scope.ts'
-import { parseBlockNode, parseFunctionBody } from './parser.ts'
-import { getIdentifierStr, mergeBasicTypeList } from '../utils'
+import { parseFunctionBody } from './parser/FunctionNode.ts'
+import { getIdentifierStr } from '../utils'
 import {
   basicTypeToVariable,
   getBasicTypeToVariable,
   getVariableToBasicType,
   tsTypeToBasicType,
-} from './typeCompatibility.ts'
+} from './compatibility.ts'
 import { createScope } from './scope.ts'
 import {
   getExpression,
-  getFunctionExpression,
   getPropertyAccessList,
   getVariablePropertyValue,
   unwrapParentheses,
 } from '../utils/parameters.ts'
 import type { CaseBlockResult } from '../types/inference.ts'
+import { parseBlockNode } from './parser/BlockNode.ts'
+import { getFunctionExpression } from './parser/utils.ts'
 
 export function inferPropertyAssignmentType(
   scope: Scope,

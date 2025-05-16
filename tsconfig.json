@@ -1,5 +1,11 @@
 {
   "compilerOptions": {
+    "baseUrl": ".", // 基准路径（通常是项目根目录）
+    "paths": {
+      "@/*": ["./lib/*"],
+      "@@types/*": ["./types/*"],
+      "@utils/*": ["./utils/*"]
+    },
     // Environment setup & latest features
     "lib": ["ESNext"],
     "target": "ESNext",

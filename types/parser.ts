@@ -30,3 +30,14 @@ export type FunctionRecord = {
   propertyAccesses: PropertyAccessExpression[]
   hasAsyncToken: Node<ts.Modifier> | undefined
 }
+
+/**
+ * 解析 BlockNode 返回类型
+ */
+export type ParseBlockResult = {
+  getBlockReturnVariable: () => Variable
+  /**
+   * block 内 return 所有边界是否都命中
+   */
+  isAllReturnsReadyState: () => boolean
+}

@@ -1,5 +1,5 @@
 import type { ObjectVariable, Variable } from './variable.ts'
-import type { ParameterItem } from './typeCompatibility.ts'
+import type { ParameterItem } from './compatibility.ts'
 
 export type Scope = {
   find(name: string): Variable | undefined

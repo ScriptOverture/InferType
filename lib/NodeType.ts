@@ -1,12 +1,8 @@
 import type { Variable } from '../types/variable'
-import type { ParameterItem } from '../types/typeCompatibility'
+import type { ParameterItem } from '@@types/compatibility.ts'
 import { SyntaxKind } from 'ts-morph'
-import {
-  getIdentifierStr,
-  isString,
-  isVariable,
-  mergeBasicTypeList,
-} from '../utils'
+import { getIdentifierStr, isString, isVariable } from '../utils'
+import { mergeBasicTypeList } from './compatibility.ts'
 
 // 基础类型抽象
 export abstract class BasicType {

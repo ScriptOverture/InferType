@@ -3,7 +3,7 @@ import { createVariable } from './variable'
 import { ObjectType, TypeMatch } from './NodeType'
 import type { Scope } from '../types/scope.ts'
 import type { ObjectVariable, Variable } from '../types/variable.ts'
-import { getBasicTypeToVariable } from './typeCompatibility.ts'
+import { getBasicTypeToVariable } from './compatibility.ts'
 import { getFuncAllParametersType } from '../utils/parameters.ts'
 
 export function createScope(

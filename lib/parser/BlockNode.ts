@@ -4,8 +4,7 @@ import {
   ts,
   type ForEachDescendantTraversalControl,
 } from 'ts-morph'
-import { createScope } from './scope.ts'
-import { createVariable } from './variable.ts'
+import { createVariable } from '@/variable.ts'
 import {
   inferArrayBindingPattern,
   inferenceType,
@@ -14,86 +13,13 @@ import {
   inferPropertyAssignmentType,
   inferVariableDeclareType,
   inferCaseBlock,
-} from './inference.ts'
-import type {
-  FunctionNode,
-  ParseFunctionBodyResult,
-  FunctionRecord,
-} from '../types/parser.ts'
-import type { Scope } from '../types/scope.ts'
-import { getExpression } from '../utils/parameters.ts'
-import { AnyType, UndefinedType } from './NodeType.ts'
-import { getFunctionReturnType, useGetReturnStatementType } from '../hooks'
-import type { Variable } from '../types/variable.ts'
-
-// 获取函数信息
-function getFunctionRecord(iFunction: FunctionNode): FunctionRecord {
-  return {
-    body: iFunction.getBody(),
-    params: iFunction.getParameters(),
-    returnStatement: iFunction
-      ?.getBody()
-      ?.asKind(SyntaxKind.Block)
-      ?.getStatement(Node.isReturnStatement),
-    propertyAccesses: iFunction.getDescendantsOfKind(
-      SyntaxKind.PropertyAccessExpression,
-    ),
-    hasAsyncToken: iFunction.getModifiers().at(0),
-  }
-}
-
-type NodeVisitor = (
-  node: Node<ts.Node>,
-  traversal: ForEachDescendantTraversalControl,
-) => void
-
-type SyntaxVisitorMap = Partial<Record<SyntaxKind, NodeVisitor>>
-
-export function traverseSyntaxTree(
-  node: Node<ts.Node>,
-  visitors: SyntaxVisitorMap,
-) {
-  node.forEachDescendant((child, traversal) => {
-    const kind = child.getKind()
-    const visitor = visitors[kind]
-    if (visitor) {
-      visitor(child, traversal)
-    }
-  })
-}
-
-/**
- * 解析函数
- * @param funNode
- * @param scopePrototype
- */
-export function parseFunctionBody(
-  funNode: FunctionNode,
-  scopePrototype?: Scope,
-): ParseFunctionBodyResult {
-  const { params, body, hasAsyncToken } = getFunctionRecord(funNode)
-  if (!body) throw new Error('body must be a function')
-  const scope = createScope(scopePrototype, params, {})
-  const { getBlockReturnVariable } = parseBlockNode(scope, body)
-
-  return {
-    getParamsType: () => scope.paramsMap,
-    getReturnType: () =>
-      getFunctionReturnType(
-        funNode,
-        scope,
-        getBlockReturnVariable(),
-        !!hasAsyncToken,
-      ),
-    getParamsList: () => scope.getParamsList(),
-    getLocalVariables: () => scope.getLocalVariables(),
-  }
-}
-
-type ParseBlockResult = {
-  getBlockReturnVariable: () => Variable
-  isAllReturnsReadyState: () => boolean
-}
+} from '../inference.ts'
+import type { Scope } from '@@types/scope'
+import { getExpression } from '@utils/parameters.ts'
+import { AnyType, UndefinedType } from '../NodeType.ts'
+import { useGetReturnStatementType } from './hooks'
+import type { ParseBlockResult } from '@@types/parser'
+import { traverseSyntaxTree } from './utils.ts'
 
 /**
  * 解析块级作用域

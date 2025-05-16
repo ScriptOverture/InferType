@@ -74,3 +74,10 @@ export function getVariableToBasicType(data: Variable | BasicType): BasicType {
   }
   return new AnyType()
 }
+
+// 合并 BasicType 类型
+export function mergeBasicTypeList(list: BasicType[]): BasicType {
+  return list.reduce((result, bType) => {
+    return result.combine(bType)
+  }, new AnyType())
+}

@@ -4,7 +4,7 @@ import {
   ObjectType,
   StringType,
   type BaseType,
-} from '../../lib/NodeType'
+} from '@/NodeType'
 
 export enum Parameter {
   // 解构参数
