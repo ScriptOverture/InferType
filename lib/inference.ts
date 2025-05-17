@@ -47,7 +47,10 @@ import {
   getVariablePropertyValue,
   unwrapParentheses,
 } from '../utils/parameters.ts'
-import type { CaseBlockResult } from '../types/inference.ts'
+import type {
+  CaseBlockResult,
+  ScopeReturnAnalysis,
+} from '../types/inference.ts'
 import { parseBlockNode } from './parser/BlockNode.ts'
 import { getFunctionExpression } from './parser/utils.ts'
 
@@ -372,7 +375,10 @@ function inferElementAccessExpression(
 }
 
 // 推断if
-export function inferIfStatement(scope: Scope, node: IfStatement) {
+export function inferIfStatement(
+  scope: Scope,
+  node: IfStatement,
+): ScopeReturnAnalysis {
   const exprNode = getExpression(node)
   const thenStatementNode = node.getThenStatement()
   const elseStatementNode = node.getElseStatement()
@@ -383,17 +389,11 @@ export function inferIfStatement(scope: Scope, node: IfStatement) {
   inferPropertyAssignmentType(scope, exprNode)
   let hasDefaultClause = false
   const returnTypes = []
-  const thenNodeBlock = parseBlockNode(
-    createScope(scope),
-    createBlockNode(thenStatementNode.getText()),
-  )
+  const thenNodeBlock = parseBlockNode(createScope(scope), thenStatementNode)
   returnTypes.push(thenNodeBlock.getBlockReturnVariable())
 
   if (elseStatementNode) {
-    const elseNodeBlock = parseBlockNode(
-      createScope(scope),
-      createBlockNode(elseStatementNode.getText()),
-    )
+    const elseNodeBlock = parseBlockNode(createScope(scope), elseStatementNode)
     returnTypes.push(elseNodeBlock.getBlockReturnVariable())
     hasDefaultClause =
       thenNodeBlock.isAllReturnsReadyState() &&
@@ -610,12 +610,9 @@ export function inferCaseBlock(scope: Scope, node: CaseBlock): CaseBlockResult {
         statement,
       ).getBlockReturnVariable()
     } else {
-      const block = createBlockNode(
-        clause.getStatements().map((item) => item.getText()),
-      )
       caseReturn = parseBlockNode(
         createScope(scope),
-        block,
+        clause,
       ).getBlockReturnVariable()
     }
 
@@ -636,29 +633,10 @@ export function inferCaseBlock(scope: Scope, node: CaseBlock): CaseBlockResult {
 
   return {
     caseTypeVariable: getBasicTypeToVariable(mergeBasicTypeList(caseTypes)),
-    caseReturnTypeVariable: getBasicTypeToVariable(
+    returnTypeVariable: getBasicTypeToVariable(
       mergeBasicTypeList(caseReturnTypes),
     ),
     returnIsAllMatch: hasDefaultClause,
   }
 }
 
-/**
- * 创建 BlockNode 待优化
- * @param statements
- */
-function createBlockNode(statements: string[] | string) {
-  const project = new Project()
-  const sourceFile = project.createSourceFile('temp.ts', '', {
-    overwrite: true,
-  })
-
-  // 我们通过创建一个临时函数，插入一个 Block
-  const func = sourceFile.addFunction({
-    name: 'wrapper',
-    statements, // 初始化为空
-  })
-
-  // 拿到函数体对应的 Block
-  return func.getBodyOrThrow()
-}

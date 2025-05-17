@@ -49,9 +49,9 @@ function getFunctionRecord(iFunction: FunctionNode): FunctionRecord {
       ?.getBody()
       ?.asKind(SyntaxKind.Block)
       ?.getStatement(Node.isReturnStatement),
-    propertyAccesses: iFunction.getDescendantsOfKind(
-      SyntaxKind.PropertyAccessExpression,
-    ),
+    /**
+     * 函数 async 标识
+     */
     hasAsyncToken: iFunction.getModifiers().at(0),
   }
 }

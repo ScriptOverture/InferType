@@ -5,7 +5,6 @@ import {
   Node,
   ts,
   type ParameterDeclaration,
-  type PropertyAccessExpression,
   type Statement,
 } from 'ts-morph'
 import type { Scope } from './scope.ts'
@@ -27,7 +26,6 @@ export type FunctionRecord = {
   body: Node | undefined
   params: ParameterDeclaration[]
   returnStatement: Statement | undefined
-  propertyAccesses: PropertyAccessExpression[]
   hasAsyncToken: Node<ts.Modifier> | undefined
 }
 

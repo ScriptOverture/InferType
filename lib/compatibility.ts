@@ -17,22 +17,22 @@ export function basicTypeToVariable(iType: Expression): Variable | undefined {
   let result
   switch (iType.getKind()) {
     case SyntaxKind.StringLiteral:
-      result = createVariable(new StringType())
+      result = new StringType()
       break
     case SyntaxKind.NumericLiteral:
-      result = createVariable(new NumberType())
+      result = new NumberType()
       break
     case SyntaxKind.TrueKeyword:
-      result = createVariable(new BooleanType())
+      result = new BooleanType()
       break
     case SyntaxKind.FalseKeyword:
-      result = createVariable(new BooleanType())
+      result = new BooleanType()
       break
     default:
-      result = createVariable(new AnyType())
+      result = new AnyType()
       break
   }
-  return result
+  return createVariable(result)
 }
 
 // ts type 转 BasicType
