@@ -1,4 +1,3 @@
-import type { Variable } from '../types/variable'
 import type { ParameterItem } from '@@types/compatibility.ts'
 import { SyntaxKind } from 'ts-morph'
 import { getIdentifierStr, isString, isVariable } from '../utils'
@@ -6,6 +5,7 @@ import { mergeBasicTypeList } from './compatibility.ts'
 
 // 基础类型抽象
 export abstract class BasicType {
+  abstract kind: number
   abstract toString(): string
   abstract combine(other: BasicType): BasicType
 }
@@ -22,8 +22,27 @@ export enum AllTypes {
   Promise = 'Promise',
 }
 
+const enum TypeKind {
+  AnyType = 1,
+  UndefinedType = 2,
+  StringType = 3,
+  NumberType = 4,
+  BooleanType = 5,
+  ArrayType = 6,
+  PromiseType = 7,
+  TupleType = 8,
+  ObjectType = 9,
+  UnionType = 10,
+  FunctionType = 11,
+  /**
+   * 引用类型
+   */
+  ReferenceType = ArrayType | TupleType | ObjectType | FunctionType,
+}
+
 // 任意类型（初始状态）
 export class AnyType extends BasicType {
+  kind = TypeKind.AnyType
   toString() {
     return AllTypes.Any
   }
@@ -33,6 +52,7 @@ export class AnyType extends BasicType {
 }
 
 export class UndefinedType extends BasicType {
+  kind = TypeKind.UndefinedType
   toString() {
     return AllTypes.Undefined
   }
@@ -43,6 +63,7 @@ export class UndefinedType extends BasicType {
 
 // 字符串类型
 export class StringType extends BasicType {
+  kind = TypeKind.StringType
   toString() {
     return AllTypes.String
   }
@@ -53,6 +74,7 @@ export class StringType extends BasicType {
 
 // 字符串类型
 export class NumberType extends BasicType {
+  kind = TypeKind.NumberType
   toString() {
     return AllTypes.Number
   }
@@ -62,6 +84,7 @@ export class NumberType extends BasicType {
 }
 
 export class BooleanType extends BasicType {
+  kind = TypeKind.BooleanType
   toString() {
     return AllTypes.Boolean
   }
@@ -71,6 +94,7 @@ export class BooleanType extends BasicType {
 }
 
 export class ArrayType extends BasicType {
+  kind = TypeKind.ArrayType
   constructor(public elementType: BasicType = new AnyType()) {
     super()
     if (TypeMatch.isTupleType(elementType)) {
@@ -102,6 +126,7 @@ export class ArrayType extends BasicType {
 
 // promise
 export class PromiseType extends BasicType {
+  kind = TypeKind.PromiseType
   constructor(public elementType: BasicType = new AnyType()) {
     super()
   }
@@ -120,6 +145,7 @@ export class PromiseType extends BasicType {
  * 元组类型
  */
 export class TupleType extends BasicType {
+  kind = TypeKind.TupleType
   constructor(public elementsType: BasicType[] = []) {
     super()
   }
@@ -146,35 +172,9 @@ export class TupleType extends BasicType {
   }
 }
 
-// 索引类型（保持原设计）
-export class IndexType extends BasicType {
-  constructor(
-    public readonly keyType: BasicType,
-    public readonly valueType: BasicType,
-  ) {
-    super()
-  }
-
-  toString() {
-    return `{ [key: ${this.keyType}]: ${this.valueType} }`
-  }
-
-  combine(other: BasicType): BasicType {
-    if (other instanceof AnyType) return this
-    return this.isSameType(other) ? this : new UnionType([this, other])
-  }
-
-  private isSameType(other: BasicType): boolean {
-    return (
-      other instanceof IndexType &&
-      this.keyType.toString() === other.keyType.toString() &&
-      this.valueType.toString() === other.valueType.toString()
-    )
-  }
-}
-
 // 结构化对象类型（新增核心类型）
 export class ObjectType extends BasicType {
+  kind = TypeKind.ObjectType
   constructor(public readonly properties: Record<string, BasicType> = {}) {
     super()
   }
@@ -192,7 +192,7 @@ export class ObjectType extends BasicType {
     return `{ ${props} }`
   }
 
-  combine(other: BasicType | Variable): BasicType {
+  combine(other: BasicType): BasicType {
     if (other instanceof AnyType) return this
     if (other instanceof ObjectType) {
       for (const k in other.properties) {
@@ -217,6 +217,7 @@ export class ObjectType extends BasicType {
 
 // 联合类型（增强版）
 export class UnionType extends BasicType {
+  kind = TypeKind.UnionType
   private types: BasicType[]
 
   constructor(initial: BasicType[]) {
@@ -268,6 +269,7 @@ export class UnionType extends BasicType {
  * 函数类型
  */
 export class FunctionType extends BasicType {
+  kind = TypeKind.FunctionType
   constructor(
     private readonly paramsType: ParameterItem[],
     private readonly returnType?: BaseType,
@@ -313,4 +315,7 @@ export const TypeMatch = {
   isUnionType: (type: unknown): type is UnionType => type instanceof UnionType,
   isUndefinedType: (type: unknown): type is UndefinedType =>
     type instanceof UndefinedType,
+  isReferenceType: (type: BasicType) => {
+    return (type.kind & TypeKind.ReferenceType) != 0
+  },
 }

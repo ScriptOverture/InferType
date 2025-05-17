@@ -42,7 +42,6 @@ export function traverseSyntaxTree(
     if (matchKind) {
       node.forEachDescendant((_, traversal) => parseChild(node, traversal))
     } else {
-
       node.forEachDescendant(parseChild)
     }
   }

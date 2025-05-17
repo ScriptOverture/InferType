@@ -64,15 +64,11 @@ function isVariableMutable(
   basicTypeRef: Ref<BasicType>,
   declarationKind: VariableDeclarationKind,
 ): boolean {
-  const basicType = basicTypeRef.current
+  const basicType = basicTypeRef.current!
   /**
    * 引用类型
    */
-  const referenceType =
-    TypeMatch.isArrayType(basicType) ||
-    TypeMatch.isObjectType(basicType) ||
-    TypeMatch.isTupleType(basicType)
-  if (!referenceType) {
+  if (TypeMatch.isReferenceType(basicType)) {
     if (declarationKind === VariableDeclarationKind.Const) {
       return false
     }
