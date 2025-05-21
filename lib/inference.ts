@@ -116,7 +116,7 @@ export function inferPropertyAssignmentType(
       const inferFunctionResult = parseFunctionBody(functionNode, scope)
       const inferFunctionType = new FunctionType(
         inferFunctionResult.getParamsList(),
-        inferFunctionResult.getReturnType(),
+        getVariableToBasicType(inferFunctionResult.getReturnType()!),
       )
       result = createVariable(inferFunctionType)
       break
@@ -237,7 +237,12 @@ function inferConditionalExpressionType(
     unwrapParentheses(whenFalseNode),
   )!
 
-  return createVariable(new UnionType([whenTrueVariable, whenFalseVariable]))
+  return createVariable(
+    new UnionType([
+      getVariableToBasicType(whenTrueVariable),
+      getVariableToBasicType(whenFalseVariable),
+    ]),
+  )
 }
 
 //  推断操作符类型
@@ -390,11 +395,11 @@ export function inferIfStatement(
   let hasDefaultClause = false
   const returnTypes = []
   const thenNodeBlock = parseBlockNode(createScope(scope), thenStatementNode)
-  returnTypes.push(thenNodeBlock.getBlockReturnVariable())
+  returnTypes.push(thenNodeBlock.getBlockReturnVariable().currentType!)
 
   if (elseStatementNode) {
     const elseNodeBlock = parseBlockNode(createScope(scope), elseStatementNode)
-    returnTypes.push(elseNodeBlock.getBlockReturnVariable())
+    returnTypes.push(elseNodeBlock.getBlockReturnVariable().currentType!)
     hasDefaultClause =
       thenNodeBlock.isAllReturnsReadyState() &&
       elseNodeBlock.isAllReturnsReadyState()
@@ -622,7 +627,7 @@ export function inferCaseBlock(scope: Scope, node: CaseBlock): CaseBlockResult {
       )
     }
 
-    caseReturnTypes.push(caseReturn)
+    caseReturnTypes.push(caseReturn.currentType!)
 
     if (Node.isDefaultClause(clause)) {
       if (!TypeMatch.isUndefinedType(clause)) {
@@ -639,4 +644,3 @@ export function inferCaseBlock(scope: Scope, node: CaseBlock): CaseBlockResult {
     returnIsAllMatch: hasDefaultClause,
   }
 }
-

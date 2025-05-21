@@ -1,7 +1,8 @@
 import type { ParameterItem } from '@@types/compatibility.ts'
 import { SyntaxKind } from 'ts-morph'
 import { getIdentifierStr, isString, isVariable } from '../utils'
-import { mergeBasicTypeList } from './compatibility.ts'
+import { getVariableToBasicType, mergeBasicTypeList } from './compatibility.ts'
+import type { ObjectVariable } from '@@types/variable.ts'
 
 // 基础类型抽象
 export abstract class BasicType {
@@ -175,7 +176,9 @@ export class TupleType extends BasicType {
 // 结构化对象类型（新增核心类型）
 export class ObjectType extends BasicType {
   kind = TypeKind.ObjectType
-  constructor(public readonly properties: Record<string, BasicType> = {}) {
+  constructor(
+    public readonly properties: Record<string, BasicType> | ObjectVariable = {},
+  ) {
     super()
   }
 
@@ -198,8 +201,8 @@ export class ObjectType extends BasicType {
       for (const k in other.properties) {
         if (Object.hasOwn(this.properties, k)) {
           this.properties[k] = new UnionType([
-            this.properties[k]!,
-            other.properties[k]!,
+            getVariableToBasicType(this.properties[k]!),
+            getVariableToBasicType(other.properties[k]!),
           ])
         } else {
           this.properties[k] = other.properties[k]!
