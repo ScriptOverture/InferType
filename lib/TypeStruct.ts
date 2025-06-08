@@ -31,7 +31,7 @@ class TrieNode {
   }
 }
 
-class TypeStructRegistry {
+export class TypeStructRegistry {
   private fieldMap = new Map<string, number>()
   private nextFieldId = 1
   /**
