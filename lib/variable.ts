@@ -1,5 +1,4 @@
-import type { Ref } from '../utils'
-import { createRef, isRef } from '../utils'
+import { createRef, isRef, isVariable, type Ref } from '../utils'
 import { AnyType, BasicType, ObjectType, TypeMatch } from './NodeType'
 import type { Variable, VariableOptions } from '../types/variable.ts'
 import {
@@ -23,6 +22,7 @@ export function createVariable(
 
   const self = {
     setTypeRef,
+    getVariableFlag: () => variableOptions.cacheFlags,
     isVariableMutable: () => isVariableMutable(typeRef, declarationKind),
     hasQuestionDot: () => !!questionDot,
     get ref() {
@@ -41,9 +41,14 @@ export function createVariable(
         }
       }
     },
-    combine: (c: Variable | BasicType) => {
+    combine: (c: Variable | BasicType, syncFlag: boolean = false) => {
       const currenType = typeRef.current?.combine(getVariableToBasicType(c))
       setTypeRef(getVariableToBasicType(currenType!))
+      if (syncFlag && isVariable(c)) {
+        Object.assign(variableOptions, {
+          cacheFlags: c.getVariableFlag(),
+        })
+      }
       return self
     },
     shallowCopy: () => {

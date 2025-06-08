@@ -53,6 +53,7 @@ import type {
 } from '../types/inference.ts'
 import { parseBlockNode } from './parser/BlockNode.ts'
 import { getFunctionExpression } from './parser/utils.ts'
+import { preTree } from '@/TypeStruct.ts'
 
 export function inferPropertyAssignmentType(
   scope: Scope,
@@ -218,7 +219,10 @@ function inferObjectLiteralExpression(
       )
     }
   }
-  return createVariable(newObjVariableType)
+
+  return createVariable(newObjVariableType, {
+    cacheFlags: preTree.registerType(newObjVariableType.properties),
+  })
 }
 
 // 推导三元运算，获取 whenTrue 和 whenFalse 的联合类型

@@ -23,7 +23,7 @@ export enum AllTypes {
   Promise = 'Promise',
 }
 
-const enum TypeKind {
+export const enum TypeKind {
   AnyType = 1,
   UndefinedType = 2,
   StringType = 3,
