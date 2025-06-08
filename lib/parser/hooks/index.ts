@@ -26,7 +26,7 @@ export function useGetReturnStatementType<T extends Variable = Variable>(
 
   function dispatchReturnType(
     targetReturnType: Variable,
-    allReturnsReadyState: Boolean = false,
+    allReturnsReadyState: boolean = false,
   ) {
     // @ts-ignore
     isAllReturnsReadyState = allReturnsReadyState

@@ -1,13 +1,15 @@
 import { BasicType } from '@/NodeType.ts'
 import type { Ref, RefReturn } from '../utils'
 import { VariableDeclarationKind } from 'ts-morph'
+import type { FlagId } from '@/TypeStruct.ts'
 
 export type Variable = {
   ref: VariableTypeRef
+  getVariableFlag: () => FlagId | undefined
   currentType: BasicType | undefined
   setTypeRef: RefReturn<any>[1]
   get: (key: string) => Variable | undefined
-  combine: (data: Variable | BasicType) => Variable
+  combine: (data: Variable | BasicType, syncFlag?: boolean) => Variable
   toString: () => string
   // 浅拷贝
   shallowCopy: () => Variable
@@ -26,4 +28,6 @@ export type VariableOptions = {
   declarationKind?: VariableDeclarationKind
   // 可选
   questionDot?: boolean
+
+  cacheFlags?: number
 }
