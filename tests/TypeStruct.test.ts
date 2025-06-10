@@ -43,6 +43,6 @@ describe('比较类型', () => {
         `,
             'fn',
         ).getLocalVariables();
-        expect(localVariables['a2']?.getVariableFlag()).toBe(localVariables['a3']?.getVariableFlag()!)
+        expect(localVariables['a2']?.currentType?.getTypeFlags()).toBe(localVariables['a3']?.currentType?.getTypeFlags()!)
     })
 })
