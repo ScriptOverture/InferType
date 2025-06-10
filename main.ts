@@ -3,15 +3,19 @@ import { inferFunctionType } from '@/inference.ts'
 const body = inferFunctionType(
   `
             const fn = () => {
-                  const a1 = {
+            const a1 = {
                         name: 1, 
                         age:'x'
                   }
-                  const a2 = {
+            if (1) {
+            return {
                         age: 'z',
                         name: 2,
                         obj: a1
                   }
+            }
+                  
+              
                   
                   const a3 = {
                         obj: {
@@ -20,6 +24,8 @@ const body = inferFunctionType(
                         name: 122, 
                         age:'x123'
                   }
+                  
+                  return a3
               };
         `,
   'fn',

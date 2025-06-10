@@ -3,12 +3,18 @@ import { SyntaxKind } from 'ts-morph'
 import { getIdentifierStr, isString, isVariable } from '../utils'
 import { getVariableToBasicType, mergeBasicTypeList } from './compatibility.ts'
 import type { ObjectVariable } from '@@types/variable.ts'
+import type { FlagId } from "@/TypeStruct.ts";
 
 // 基础类型抽象
 export abstract class BasicType {
   abstract kind: number
+  // 复杂类型预留标识
+  flags: FlagId | undefined
   abstract toString(): string
   abstract combine(other: BasicType): BasicType
+  getTypeFlags() {
+    return this.flags || this.kind;
+  }
 }
 
 export type BaseType = BasicType
@@ -173,7 +179,7 @@ export class TupleType extends BasicType {
   }
 }
 
-// 结构化对象类型（新增核心类型）
+// 结构化对象类型
 export class ObjectType extends BasicType {
   kind = TypeKind.ObjectType
   constructor(
@@ -249,7 +255,7 @@ export class UnionType extends BasicType {
   }
 
   private normalizeTypes(types: BasicType[]): BasicType[] {
-    const seen = new Set<string>()
+    const prev: Record<FlagId, boolean> = {}
     return types
       .flatMap((item) => {
         if (TypeMatch.isUnionType(item)) {
@@ -258,10 +264,10 @@ export class UnionType extends BasicType {
         return item
       })
       .reduce<BasicType[]>((acc, t) => {
-        const key = t.toString()
-        if (!seen.has(key) && key !== AllTypes.Any) {
-          seen.add(key)
-          acc.push(t)
+        const flag = t.getTypeFlags()
+        if (!Object.hasOwn(prev, flag)) {
+          prev[flag] = true;
+          return acc.concat(t)
         }
         return acc
       }, [])

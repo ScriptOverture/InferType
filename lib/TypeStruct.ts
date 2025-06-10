@@ -1,4 +1,4 @@
-import { BasicType, TypeKind, TypeMatch } from './NodeType.ts'
+import { BasicType, TypeKind } from './NodeType.ts'
 import type { ObjectVariable } from '@@types/variable.ts'
 
 export type FlagId = number
@@ -31,6 +31,9 @@ class TrieNode {
   }
 }
 
+/**
+ * 缓存对象类型结构
+ */
 export class TypeStructRegistry {
   private fieldMap = new Map<string, number>()
   private nextFieldId = 1
@@ -56,14 +59,9 @@ export class TypeStructRegistry {
 
     for (const [key, value] of Object.entries(def)) {
       const fieldId = this.getFieldId(key)
-      const variableType = value.currentType
-      let kind: TypeKind
+      const variableType: BasicType = value.currentType
+      const kind: TypeKind = variableType.getTypeFlags();
 
-      if (TypeMatch.isObjectType(variableType)) {
-        kind = value.getVariableFlag()!
-      } else {
-        kind = variableType?.kind!
-      }
       entries.push({ fieldId, kind })
     }
 

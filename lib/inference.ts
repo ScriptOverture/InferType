@@ -219,10 +219,8 @@ function inferObjectLiteralExpression(
       )
     }
   }
-
-  return createVariable(newObjVariableType, {
-    cacheFlags: preTree.registerType(newObjVariableType.properties),
-  })
+  newObjVariableType.flags = preTree.registerType(newObjVariableType.properties)
+  return createVariable(newObjVariableType)
 }
 
 // 推导三元运算，获取 whenTrue 和 whenFalse 的联合类型
