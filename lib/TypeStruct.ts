@@ -59,8 +59,8 @@ export class TypeStructRegistry {
 
     for (const [key, value] of Object.entries(def)) {
       const fieldId = this.getFieldId(key)
-      const variableType: BasicType = value.currentType || value;
-      const kind: TypeKind = variableType.getTypeFlags();
+      const variableType: BasicType = value.currentType || value
+      const kind: TypeKind = variableType.getTypeFlags()
 
       entries.push({ fieldId, kind })
     }

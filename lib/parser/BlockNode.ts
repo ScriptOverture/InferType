@@ -128,7 +128,7 @@ function toVariableDeclaration(
       const rhsType = inferenceType(scope, initializer, traversal)
       if (rhsType) {
         // 循环引用
-        newType.combine(rhsType, true)
+        newType.combine(rhsType)
       }
 
       break

@@ -28,7 +28,6 @@ export function useGetReturnStatementType<T extends Variable = Variable>(
     targetReturnType: Variable,
     allReturnsReadyState: boolean = false,
   ) {
-    // @ts-ignore
     isAllReturnsReadyState = allReturnsReadyState
     setReturnStatementType((prev) => {
       /**

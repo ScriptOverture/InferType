@@ -3,7 +3,7 @@ import { SyntaxKind } from 'ts-morph'
 import { getIdentifierStr, isString, isVariable } from '../utils'
 import { getVariableToBasicType, mergeBasicTypeList } from './compatibility.ts'
 import type { ObjectVariable } from '@@types/variable.ts'
-import type { FlagId } from "@/TypeStruct.ts";
+import type { FlagId } from '@/TypeStruct.ts'
 
 // 基础类型抽象
 export abstract class BasicType {
@@ -13,7 +13,7 @@ export abstract class BasicType {
   abstract toString(): string
   abstract combine(other: BasicType): BasicType
   getTypeFlags() {
-    return this.flags || this.kind;
+    return this.flags || this.kind
   }
 }
 
@@ -266,7 +266,7 @@ export class UnionType extends BasicType {
       .reduce<BasicType[]>((acc, t) => {
         const flag = t.getTypeFlags()
         if (!Object.hasOwn(prev, flag)) {
-          prev[flag] = true;
+          prev[flag] = true
           return acc.concat(t)
         }
         return acc
