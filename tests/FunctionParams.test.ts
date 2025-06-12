@@ -10,18 +10,7 @@ import {
 } from './utils'
 import type { ObjectType } from '@/NodeType'
 import { getFunctionExpression } from '@/parser/utils.ts'
-// enum Function {
-//     // 函数声明
-//     FunctionDeclaration,
-//     // 函数表达式
-//     FunctionExpression,
-//     // 箭头函数
-//     ArrowFunction,
-//     // 对象方法简写
-//     MethodShorthand,
-//     // 类方法
-//     ClassMethods
-// }
+import { inferFunctionType } from '@/inference.ts'
 
 describe('检查函数参数名称 => FunctionParmas', () => {
   const project = new Project()
@@ -185,4 +174,32 @@ describe('检查函数参数类型', () => {
       }
     })
   }
+})
+
+describe('函数ts类型获取检查', () => {
+  test('基础类型检查', () => {
+    const { getParamsType, getParamsList } = inferFunctionType(
+      `const test = (a: string, b: number) => {}
+        `,
+      'test',
+    )
+    const paramsMap = getParamsType()
+    const paramsList = getParamsList()
+    expect(paramsList.length).toEqual(2)
+    expect(paramsMap['a']?.toString()).toEqual('string')
+    expect(paramsMap['b']?.toString()).toEqual('number')
+  })
+
+  test('基础类型检查', () => {
+    const { getParamsType, getParamsList } = inferFunctionType(
+      `const test = (a: (a: string) => number, b: {name: string[], bb: string}) => {}
+        `,
+      'test',
+    )
+    const paramsMap = getParamsType()
+    const paramsList = getParamsList()
+    expect(paramsList.length).toEqual(2)
+    expect(paramsMap['a']?.toString()).toEqual('(a: string) => number')
+    expect(paramsMap['b']?.toString()).toEqual('{ name: string[], bb: string }')
+  })
 })

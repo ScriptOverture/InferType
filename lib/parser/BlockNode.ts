@@ -21,6 +21,7 @@ import { useGetReturnStatementType } from './hooks'
 import type { ParseBlockResult } from '@@types/parser'
 import { traverseSyntaxTree } from './utils.ts'
 import type { ScopeReturnAnalysis } from '@@types/inference.ts'
+import { parseType } from './parseTsType.ts'
 
 type ParseScopeStatementFunc = (
   scope: Scope,
@@ -123,6 +124,14 @@ function toVariableDeclaration(
       const newType = createVariable(new AnyType(), {
         declarationKind: varDeclKind,
       })
+      const varDeclType = varDecl.getType()
+      varDeclType
+        .getAliasSymbol()
+        ?.getDeclarations()
+        .forEach((aType) => {
+          const t = parseType(aType)
+          console.log(t.toString(), '>>>>')
+        })
       scope.createLocalVariable(nameNode.getText(), newType)
       if (!initializer) return
       const rhsType = inferenceType(scope, initializer, traversal)

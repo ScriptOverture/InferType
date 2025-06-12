@@ -15,6 +15,7 @@ import { AnyType, ArrayType, ObjectType } from '@/NodeType.ts'
 import type { Scope } from '../types/scope.ts'
 import type { ObjectVariable, Variable } from '../types/variable.ts'
 import type { Property } from '../types/parameters.ts'
+import { parseType } from '@/parser/parseTsType.ts'
 
 // 获取函数所有参数
 export function getFuncAllParametersType(
@@ -32,9 +33,13 @@ export function getFuncAllParametersType(
       paramsType: createVariable(),
     }
 
+    const paramsType = paramsItem.getTypeNode()
     if (Node.isIdentifier(paramNode)) {
       paramsMap[paramName] = currentItem.paramsType
       currentItem.paramName = paramName
+      const t = parseType(paramsType!)
+      console.log(t.toString(), paramName, 'hhhh')
+      currentItem.paramsType.combine(t)
     }
     // 参数解构
     else if (Node.isObjectBindingPattern(paramNode)) {

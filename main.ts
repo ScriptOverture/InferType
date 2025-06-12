@@ -1,33 +1,13 @@
 import { inferFunctionType } from '@/inference.ts'
+import { ObjectType } from '@/NodeType.ts'
 
 const body = inferFunctionType(
   `
-            const fn = () => {
-            const a1 = {
-                        name: 1, 
-                        age:'x'
-                  }
-            if (1) {
-            return {
-                        age: 'z',
-                        name: 2,
-                        obj: a1
-                  }
-            }
-                  
-              
-                  
-                  const a3 = {
-                        obj: {
-                           age: 'xx',name:22
-                                                   },
-                        name: 122, 
-                        age:'x123'
-                  }
-                  
-                  return a3
+  type T = (data: string, b: string[]) => string
+            const fn = (data: string, b: string[]) => {
+                const o: T = {}
               };
         `,
   'fn',
 )
-console.log(body.getReturnType()?.toString(), 'return END')
+console.log(new ObjectType(body.getParamsType()).toString(), 'return END')

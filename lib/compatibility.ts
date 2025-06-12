@@ -1,12 +1,22 @@
-import {Expression, type Node, ts, type Type, TypeFlags} from 'ts-morph'
-import type {Variable} from '../types/variable.ts'
-import {createVariable} from './variable.ts'
-import {AnyType, BasicType, BooleanType, NumberType, StringType, TypeMatch, UndefinedType,} from './NodeType.ts'
-import {isVariable} from '../utils'
-import SyntaxKind = ts.SyntaxKind;
+import { Expression, type Node, ts, type Type, TypeFlags } from 'ts-morph'
+import type { Variable } from '../types/variable.ts'
+import { createVariable } from './variable.ts'
+import {
+  AnyType,
+  BasicType,
+  BooleanType,
+  NumberType,
+  StringType,
+  TypeMatch,
+  UndefinedType,
+} from './NodeType.ts'
+import { isVariable } from '../utils'
+import SyntaxKind = ts.SyntaxKind
 
 // ast node 转 BasicType
-export function convertBasicAstNodeToBasicType(iType: Expression | Node<ts.Node>): BasicType {
+export function convertBasicAstNodeToBasicType(
+  iType: Expression | Node<ts.Node>,
+): BasicType {
   if (!iType) return new AnyType()
   let result
   switch (iType.getKind()) {
