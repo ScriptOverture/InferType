@@ -44,6 +44,10 @@ export function isNumber(n: any): n is number {
   return typeof n === 'number'
 }
 
+export function isObject(n: any): n is object {
+  return typeof n === 'object'
+}
+
 // 获取关键字符 '"x"' => 'x'
 export function getIdentifierStr(n: string): string {
   return n.replace(/['\\"]+/g, '')

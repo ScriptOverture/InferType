@@ -1,9 +1,9 @@
 import { BasicType, TypeKind } from './NodeType.ts'
 import type { ObjectVariable } from '@@types/variable.ts'
 
-export type FlagId = number
+export type FlagId = { __flagId: number } & number
 
-let nextFlagId: FlagId = 1
+let nextFlagId = 1 as FlagId
 class TrieNode {
   children: Map<string, TrieNode> = new Map<string, TrieNode>()
   fieldId: number
@@ -21,7 +21,7 @@ class TrieNode {
 
   addChild(fieldId: number, kind: TypeKind): TrieNode {
     const node = new TrieNode(fieldId, kind)
-    node.flagId = nextFlagId++
+    node.flagId = nextFlagId++ as FlagId
     this.children.set(this.getId(fieldId, kind), node)
     return node
   }

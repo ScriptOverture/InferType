@@ -1,38 +1,36 @@
-import { Expression, SyntaxKind, ts, type Type, TypeFlags } from 'ts-morph'
-import type { Variable } from '../types/variable.ts'
-import { createVariable } from './variable.ts'
-import {
-  AnyType,
-  BasicType,
-  BooleanType,
-  NumberType,
-  StringType,
-  TypeMatch,
-} from './NodeType.ts'
-import { isVariable } from '../utils'
+import {Expression, type Node, ts, type Type, TypeFlags} from 'ts-morph'
+import type {Variable} from '../types/variable.ts'
+import {createVariable} from './variable.ts'
+import {AnyType, BasicType, BooleanType, NumberType, StringType, TypeMatch, UndefinedType,} from './NodeType.ts'
+import {isVariable} from '../utils'
+import SyntaxKind = ts.SyntaxKind;
 
-// ast type 类型转 Variable
-export function basicTypeToVariable(iType: Expression): Variable | undefined {
-  if (!iType) return
+// ast node 转 BasicType
+export function convertBasicAstNodeToBasicType(iType: Expression | Node<ts.Node>): BasicType {
+  if (!iType) return new AnyType()
   let result
   switch (iType.getKind()) {
+    case SyntaxKind.StringKeyword:
     case SyntaxKind.StringLiteral:
       result = new StringType()
       break
+    case SyntaxKind.NumberKeyword:
     case SyntaxKind.NumericLiteral:
       result = new NumberType()
       break
+    case SyntaxKind.BooleanKeyword:
     case SyntaxKind.TrueKeyword:
-      result = new BooleanType()
-      break
     case SyntaxKind.FalseKeyword:
       result = new BooleanType()
+      break
+    case SyntaxKind.UndefinedKeyword:
+      result = new UndefinedType()
       break
     default:
       result = new AnyType()
       break
   }
-  return createVariable(result)
+  return result
 }
 
 // ts type 转 BasicType
@@ -47,6 +45,8 @@ export function tsTypeToBasicType(type: Type) {
       return new NumberType()
     case TypeFlags.Any:
       return new AnyType()
+    case TypeFlags.Undefined:
+      return new UndefinedType()
     default:
       if (types.every((t) => t.getFlags() === TypeFlags.BooleanLiteral)) {
         return new BooleanType()

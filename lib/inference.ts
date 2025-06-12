@@ -35,7 +35,7 @@ import type { Scope } from '../types/scope.ts'
 import { parseFunctionBody } from './parser/FunctionNode.ts'
 import { getIdentifierStr } from '../utils'
 import {
-  basicTypeToVariable,
+  convertBasicAstNodeToBasicType,
   getBasicTypeToVariable,
   getVariableToBasicType,
   tsTypeToBasicType,
@@ -165,7 +165,7 @@ export function inferPropertyAssignmentType(
       break
     // 兜底推断类型
     default:
-      result = basicTypeToVariable(iType)
+      result = getBasicTypeToVariable(convertBasicAstNodeToBasicType(iType))
       break
   }
 

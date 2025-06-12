@@ -1,9 +1,11 @@
 import type { ParameterItem } from '@@types/compatibility.ts'
 import { SyntaxKind } from 'ts-morph'
-import { getIdentifierStr, isString, isVariable } from '../utils'
+import { getIdentifierStr, isObject, isString, isVariable } from '../utils'
 import { getVariableToBasicType, mergeBasicTypeList } from './compatibility.ts'
 import type { ObjectVariable } from '@@types/variable.ts'
 import type { FlagId } from '@/TypeStruct.ts'
+
+const __basicTypeMarker = Symbol('__basicType')
 
 // 基础类型抽象
 export abstract class BasicType {
@@ -12,6 +14,10 @@ export abstract class BasicType {
   flags: FlagId | undefined
   abstract toString(): string
   abstract combine(other: BasicType): BasicType
+  /**
+   * 类型标识
+   */
+  [__basicTypeMarker] = true
   getTypeFlags() {
     return this.flags || this.kind
   }
@@ -264,7 +270,7 @@ export class UnionType extends BasicType {
         return item
       })
       .reduce<BasicType[]>((acc, t) => {
-        const flag = t.getTypeFlags()
+        const flag = t.getTypeFlags() as FlagId
         if (!Object.hasOwn(prev, flag)) {
           prev[flag] = true
           return acc.concat(t)
@@ -311,19 +317,22 @@ export class FunctionType extends BasicType {
   }
 }
 
+const createTypeChecker = <T extends BasicType>(expectedKind: TypeKind) => {
+  return (type: unknown): type is T =>
+    TypeMatch.isBasicType(type) && type.kind === expectedKind
+}
+
 export const TypeMatch = {
-  isBasicType: (type: unknown): type is BasicType => type instanceof BasicType,
-  isObjectType: (type: unknown): type is ObjectType =>
-    type instanceof ObjectType,
-  isStringType: (type: unknown): type is StringType =>
-    type instanceof StringType,
-  isNumberType: (type: unknown): type is NumberType =>
-    type instanceof NumberType,
-  isTupleType: (type: unknown): type is TupleType => type instanceof TupleType,
-  isArrayType: (type: unknown): type is ArrayType => type instanceof ArrayType,
-  isUnionType: (type: unknown): type is UnionType => type instanceof UnionType,
-  isUndefinedType: (type: unknown): type is UndefinedType =>
-    type instanceof UndefinedType,
+  isBasicType: (type: unknown): type is BasicType => {
+    return isObject(type) && Object.hasOwn(type, __basicTypeMarker)
+  },
+  isObjectType: createTypeChecker<ObjectType>(TypeKind.ObjectType),
+  isStringType: createTypeChecker<StringType>(TypeKind.StringType),
+  isNumberType: createTypeChecker<NumberType>(TypeKind.NumberType),
+  isTupleType: createTypeChecker<TupleType>(TypeKind.TupleType),
+  isArrayType: createTypeChecker<ArrayType>(TypeKind.ArrayType),
+  isUnionType: createTypeChecker<UnionType>(TypeKind.UnionType),
+  isUndefinedType: createTypeChecker<UndefinedType>(TypeKind.UndefinedType),
   isReferenceType: (type: BasicType) => {
     return (type.kind & TypeKind.ReferenceType) != 0
   },
