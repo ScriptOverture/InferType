@@ -24,8 +24,9 @@ export function traverseSyntaxTree(
     /**
      * 对于非 Block 节点，先检查它本身是否有对应的解析器
      */
+    const kind = node.getKind()
     const matchKind = Object.keys(visitors).find(
-      (pKind) => node.getKind() === Number(pKind),
+      (pKind) => kind === Number(pKind),
     )
     /**
      * 情况 A：当前节点类型在 visitors 中有对应的解析函数
@@ -74,7 +75,7 @@ export function getFunctionExpression(
       sourceFile.getVariableDeclaration(targetFuncName)
     const initializer = variableDeclaration?.getInitializer()
     iFunction = variableDeclaration?.getInitializerIfKind(
-      initializer?.getKind()! as SyntaxKind.FunctionExpression,
+      initializer?.getKind() as SyntaxKind.FunctionExpression,
     )!
   }
   return iFunction

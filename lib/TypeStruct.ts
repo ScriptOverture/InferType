@@ -34,7 +34,7 @@ class TrieNode {
 /**
  * 缓存对象类型结构
  */
-export class TypeStructRegistry {
+class TypeStructRegistry {
   private fieldMap = new Map<string, number>()
   private nextFieldId = 1
   /**
