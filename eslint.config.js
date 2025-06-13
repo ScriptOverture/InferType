@@ -27,6 +27,7 @@ export default tseslint.config(
     rules: {
       '@typescript-eslint/no-non-null-asserted-optional-chain': 'off',
       '@typescript-eslint/no-explicit-any': 'off',
+      'no-fallthrough': 'off',
     },
   },
 )

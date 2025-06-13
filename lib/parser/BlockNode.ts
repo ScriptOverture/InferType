@@ -124,14 +124,17 @@ function toVariableDeclaration(
       const newType = createVariable(new AnyType(), {
         declarationKind: varDeclKind,
       })
-      const varDeclType = varDecl.getType()
-      varDeclType
-        .getAliasSymbol()
-        ?.getDeclarations()
-        .forEach((aType) => {
-          const t = parseType(aType)
-          console.log(t.toString(), '>>>>')
-        })
+
+      const type = varDecl.getType()
+      const aliasSymbol = type.getAliasSymbol()
+      const symbol = aliasSymbol ?? type.getSymbol()
+
+      symbol?.getDeclarations()?.forEach((declNode) => {
+        console.log(declNode.getKind(), '======')
+        const t = parseType(declNode)
+        console.log(t.toString(), '>>>>')
+      })
+
       scope.createLocalVariable(nameNode.getText(), newType)
       if (!initializer) return
       const rhsType = inferenceType(scope, initializer, traversal)
