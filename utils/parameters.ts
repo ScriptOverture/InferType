@@ -11,7 +11,7 @@ import type {
   ParameterItem,
 } from '@@types/compatibility.ts'
 import { createVariable } from '@/variable.ts'
-import { AnyType, ArrayType, ObjectType } from '@/NodeType.ts'
+import { AnyType, ObjectType } from '@/NodeType.ts'
 import type { Scope } from '../types/scope.ts'
 import type { ObjectVariable, Variable } from '../types/variable.ts'
 import type { Property } from '../types/parameters.ts'
@@ -27,9 +27,10 @@ export function getFuncAllParametersType(
   params.forEach((paramsItem, index) => {
     const paramName = paramsItem.getName()
     const paramNode = paramsItem.getNameNode()
+    const hasDotDotDot = paramsItem.getDotDotDotToken()
     const currentItem: ParameterItem = {
       current: paramsItem,
-      kind: paramNode.getKind(),
+      kind: hasDotDotDot?.getKind() || paramNode.getKind(),
       paramsType: createVariable(),
     }
 
@@ -37,9 +38,9 @@ export function getFuncAllParametersType(
     if (Node.isIdentifier(paramNode)) {
       paramsMap[paramName] = currentItem.paramsType
       currentItem.paramName = paramName
-      const t = parseType(paramsType!)
-      console.log(t.toString(), paramName, 'hhhh')
-      currentItem.paramsType.combine(t)
+      if (paramsType) {
+        currentItem.paramsType.combine(parseType(paramsType))
+      }
     }
     // 参数解构
     else if (Node.isObjectBindingPattern(paramNode)) {
@@ -52,11 +53,11 @@ export function getFuncAllParametersType(
       currentItem.paramsType.combine(new ObjectType(paramObjs))
     }
     // 剩余参数
-    else if (Node.isParametered(paramNode)) {
-      const originType = new ArrayType()
-      currentItem.paramsType.combine(originType)
-      paramsMap[paramName] = currentItem.paramsType
-    }
+    // if (Node.isParametered(paramNode)) {
+    //   const originType = new ArrayType()
+    //   currentItem.paramsType.combine(originType)
+    //   paramsMap[paramName] = currentItem.paramsType
+    // }
     parameterList[index] = currentItem
   })
 

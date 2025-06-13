@@ -303,8 +303,8 @@ export class FunctionType extends BasicType {
           return `{ ${Object.entries(kv.properties)
             .map(([k, v]) => `${k}: ${v}`)
             .join(', ')} }: ${paramsType}`
-        } else if (kind === SyntaxKind.Parameter) {
-          return `...${paramsType}: ${paramsType}`
+        } else if (kind === SyntaxKind.DotDotDotToken) {
+          return `...${paramName}: ${paramsType}`
         }
       })
       .join(', ')
