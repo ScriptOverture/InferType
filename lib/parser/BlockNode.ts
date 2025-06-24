@@ -19,9 +19,9 @@ import { getExpression } from '@utils/parameters.ts'
 import { AnyType, UndefinedType } from '../NodeType.ts'
 import { useGetReturnStatementType } from './hooks'
 import type { ParseBlockResult } from '@@types/parser'
-import { traverseSyntaxTree } from './utils.ts'
+import { isRelatedTo, traverseSyntaxTree } from './utils.ts'
 import type { ScopeReturnAnalysis } from '@@types/inference.ts'
-import { parseType } from './parseTsType.ts'
+import { getInferredAnnotation } from './parseTsType.ts'
 
 type ParseScopeStatementFunc = (
   scope: Scope,
@@ -86,6 +86,8 @@ function toVariableDeclaration(
   traversal: ForEachDescendantTraversalControl,
 ) {
   const varDecl = node.asKindOrThrow(SyntaxKind.VariableDeclaration)
+  // 显示标注类型
+  const annotationVariable = getInferredAnnotation(varDecl.getType())
   const nameNode = varDecl.getNameNode()
   const varDeclKind = inferVariableDeclareType(varDecl)
   const initializer = varDecl.getInitializer()!
@@ -125,24 +127,26 @@ function toVariableDeclaration(
         declarationKind: varDeclKind,
       })
 
-      const type = varDecl.getType()
-      const aliasSymbol = type.getAliasSymbol()
-      const symbol = aliasSymbol ?? type.getSymbol()
-
-      symbol?.getDeclarations()?.forEach((declNode) => {
-        console.log(declNode.getKind(), '======')
-        const t = parseType(declNode)
-        console.log(t.toString(), '>>>>')
-      })
-
       scope.createLocalVariable(nameNode.getText(), newType)
-      if (!initializer) return
+      if (!initializer) {
+        newType.combine(annotationVariable!)
+        return
+      }
       const rhsType = inferenceType(scope, initializer, traversal)
       if (rhsType) {
-        // 循环引用
-        newType.combine(rhsType)
+        /**
+         * 标注类型与推断类型兼容判断
+         * 兼容采用标注
+         */
+        const related = isRelatedTo(annotationVariable?.currentType!, rhsType?.currentType!)
+        if (related) {
+          newType.combine(annotationVariable!)
+        }
+        else {
+          // 循环引用
+          newType.combine(rhsType)
+        }
       }
-
       break
     }
   }

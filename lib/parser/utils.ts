@@ -6,6 +6,8 @@ import {
   ts,
 } from 'ts-morph'
 import type { FunctionNode } from '@@types/parser'
+import { type BasicType, TypeMatch } from "@/NodeType.ts";
+import { preTree } from "@/TypeStruct.ts";
 
 export type NodeVisitor = (
   node: Node<ts.Node>,
@@ -79,4 +81,39 @@ export function getFunctionExpression(
     )!
   }
   return iFunction
+}
+
+
+
+export function isRelatedTo(originalSource: BasicType, originalTarget: BasicType) {
+  if (!originalSource) return false
+  if (originalSource === originalTarget) return true
+
+  const sourceKind = originalSource.kind, targetKind = originalTarget.kind;
+  const sourceIsReferenceType = TypeMatch.isReferenceType(originalSource);
+  const targetIsReferenceType = TypeMatch.isReferenceType(originalTarget);
+  if ((sourceKind === targetKind) && !sourceIsReferenceType) return true
+  if (sourceIsReferenceType !== targetIsReferenceType) return false
+
+  /**
+   * 复杂类型结构相同
+   */
+  if (originalSource.flags === originalTarget.flags && originalSource.flags !== undefined) return true
+  /**
+   * 对象类型比较
+   */
+  if (TypeMatch.isObjectType(originalSource) && TypeMatch.isObjectType(originalTarget)) {
+    let sourceFlags = originalSource.flags;
+    if (!sourceFlags) {
+      sourceFlags = preTree.registerType(originalSource.properties)
+    }
+    let targetFlags = originalTarget.flags
+    if (!targetFlags) {
+      targetFlags = preTree.registerType(originalTarget.properties)
+    }
+
+    return sourceFlags === targetFlags
+  }
+
+  return false;
 }

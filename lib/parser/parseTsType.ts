@@ -1,4 +1,4 @@
-import { type Node, type ts, SyntaxKind } from 'ts-morph'
+import { type Node, type ts, SyntaxKind, type Type } from 'ts-morph'
 import { ArrayType, BasicType, FunctionType, ObjectType } from '@/NodeType.ts'
 import {
   convertBasicAstNodeToBasicType,
@@ -50,8 +50,9 @@ export const parseType = (targetType: Node<ts.Node>): BasicType => {
     case SyntaxKind.PropertySignature: {
       const node = targetType.asKindOrThrow(kind)
       const hasQuestionToken = node.getQuestionTokenNode()
+      const originExpression = node.getInitializer() || node.getTypeNode()!;
       result = new ObjectType({
-        [node.getName()]: createVariable(parseType(node.getTypeNode()!), {
+        [node.getName()]: createVariable(parseType(originExpression), {
           questionDot: !!hasQuestionToken,
         }),
       })
@@ -79,4 +80,21 @@ export const parseType = (targetType: Node<ts.Node>): BasicType => {
   return result
 }
 
-// SyntaxKind.TypeAliasDeclaration
+
+/**
+ * 推断显示标注类型
+ * @param annotationType
+ */
+export function getInferredAnnotation(annotationType: Type<ts.Type>) {
+  const aliasSymbol = annotationType.getAliasSymbol()
+  const symbol = aliasSymbol ?? annotationType.getSymbol()
+  const declarations = symbol?.getDeclarations();
+  if (declarations) {
+    const variable = createVariable()
+    symbol?.getDeclarations()?.forEach((declNode) => {
+      variable.combine(parseType(declNode))
+    })
+
+    return variable
+  }
+}

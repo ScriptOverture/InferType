@@ -188,14 +188,31 @@ export class TupleType extends BasicType {
 // 结构化对象类型
 export class ObjectType extends BasicType {
   kind = TypeKind.ObjectType
+  properties: Record<string, BasicType> | ObjectVariable = {}
+  unRequiredProperties: Record<string, BasicType> | ObjectVariable = {}
   constructor(
-    public readonly properties: Record<string, BasicType> | ObjectVariable = {},
+    private readonly allProperties: Record<string, BasicType> | ObjectVariable = {},
   ) {
     super()
+    this.addProperties(allProperties)
+  }
+
+  addProperties(properties: Record<string, BasicType> | ObjectVariable) {
+    for (const key in properties) {
+      const item = properties[key]!
+      if (isVariable(item) && item.hasQuestionDot()) {
+        this.unRequiredProperties[key] = item;
+        continue
+      }
+      this.properties[key] = item
+    }
   }
 
   toString() {
-    const props = Object.entries(this.properties)
+    const props = Object.entries({
+      ...this.properties,
+      ...this.unRequiredProperties
+    })
       .map(([k, v]) => {
         if (isVariable(v)) {
           return `${k}${v?.hasQuestionDot() ? '?' : ''}: ${v}`
@@ -220,6 +237,7 @@ export class ObjectType extends BasicType {
           this.properties[k] = other.properties[k]!
         }
       }
+      Object.assign(this.unRequiredProperties, other.unRequiredProperties)
       return this
     }
     return new UnionType([this, other])

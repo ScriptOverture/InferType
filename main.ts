@@ -3,11 +3,14 @@ import { ObjectType } from '@/NodeType.ts'
 
 const body = inferFunctionType(
   `
-  type T = (data: string, b: string[]) => string
-            const fn = (data: string, b: string[]) => {
-                const o: T = {}
-              };
+  class TestClass {
+                name = "xx"
+                age?: number
+            }
+            const fn = () => {
+                const obj: TestClass;
+            };
         `,
   'fn',
 )
-console.log(new ObjectType(body.getParamsType()).toString(), 'return END')
+console.log(new ObjectType(body.getLocalVariables()).toString(), 'return END')
