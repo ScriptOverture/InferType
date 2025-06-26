@@ -208,6 +208,10 @@ export class ObjectType extends BasicType {
     }
   }
 
+  getPropertiesVal(key: string) {
+    return this.properties[key] || this.unRequiredProperties[key];
+  }
+
   toString() {
     const props = Object.entries({
       ...this.properties,

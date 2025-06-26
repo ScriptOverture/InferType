@@ -34,9 +34,9 @@ export function createVariable(
     get: (key: string) => {
       const current = typeRef.current
       if (TypeMatch.isObjectType(current!)) {
-        const objType = current.properties[key]
-        if (objType) {
-          return getBasicTypeToVariable(objType)
+        const propertiesType = current.getPropertiesVal(key)
+        if (propertiesType) {
+          return getBasicTypeToVariable(propertiesType)
         }
       }
     },

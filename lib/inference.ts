@@ -375,7 +375,7 @@ function inferElementAccessExpression(
       expressionTokenKey = getIdentifierStr(argExprNode.getText()!)
     }
 
-    result = getBasicTypeToVariable(expressionType.get(expressionTokenKey)!)
+    result = getBasicTypeToVariable(expressionVariable.get(expressionTokenKey)!)
   }
 
   return result
