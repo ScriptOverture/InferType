@@ -86,8 +86,9 @@ function toVariableDeclaration(
   traversal: ForEachDescendantTraversalControl,
 ) {
   const varDecl = node.asKindOrThrow(SyntaxKind.VariableDeclaration)
+  const varDeclTypeNode = varDecl.getTypeNode()
   // 显示标注类型
-  const annotationVariable = getInferredAnnotation(varDecl.getType())
+  const annotationVariable = varDeclTypeNode? getInferredAnnotation(varDecl.getType()): createVariable()
   const nameNode = varDecl.getNameNode()
   const varDeclKind = inferVariableDeclareType(varDecl)
   const initializer = varDecl.getInitializer()!
